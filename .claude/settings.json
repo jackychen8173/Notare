@@ -1,0 +1,55 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(psql *)",
+      "Bash(mysql *)",
+      "Bash(mongosh *)",
+      "Bash(sqlcmd *)",
+      "Bash(sqlite3 *)",
+      "Bash(redis-cli *)",
+      "Bash(mvn flyway:migrate*)",
+      "Bash(mvn flyway:clean*)",
+      "Bash(mvn flyway:repair*)",
+      "Bash(mvn flyway:undo*)",
+      "Bash(mvn flyway:baseline*)",
+      "Bash(./mvnw flyway:migrate*)",
+      "Bash(./mvnw flyway:clean*)",
+      "Bash(flyway migrate*)",
+      "Bash(flyway clean*)",
+      "PowerShell(psql *)",
+      "PowerShell(mysql *)"
+    ],
+    "ask": [
+      "Bash(git push*)",
+      "Bash(rm *)",
+      "Bash(git rm *)",
+      "Bash(git clean*)",
+      "PowerShell(git push*)",
+      "PowerShell(Remove-Item *)",
+      "PowerShell(rmdir *)",
+      "PowerShell(del *)"
+    ]
+  },
+  "autoMode": {
+    "hard_deny": [
+      "$defaults",
+      "Never run git push, or any command that pushes commits to a remote repository, without the user's explicit real-time confirmation for that specific push.",
+      "Never delete, remove, or truncate files (rm, del, Remove-Item, rmdir, git rm, git clean, find -delete, etc.) without the user's explicit real-time confirmation for that specific deletion.",
+      "Never run a database CLI (psql, mysql, mongosh, sqlcmd, sqlite3, redis-cli) or apply/mutate a database migration (flyway migrate/clean/repair/undo/baseline, liquibase update/rollback/dropAll). Database changes are performed by the user, never by Claude."
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/guard-destructive.js",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
