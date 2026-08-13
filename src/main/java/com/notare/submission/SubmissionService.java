@@ -65,9 +65,18 @@ public class SubmissionService {
     public SubmissionResponse releaseFeedback(UUID submissionId, ReleaseFeedbackRequest request, String tutorEmail) {
         Submission submission = requireOwnedSubmission(submissionId, tutorEmail);
 
-        submission.setTutorFeedback(request.tutorFeedback());
+        boolean hasTutorFeedback = request.tutorFeedback() != null && !request.tutorFeedback().isBlank();
+        if (!hasTutorFeedback && submission.getSageFeedback() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Nothing to release: no Sage feedback has been generated and no tutor feedback was provided");
+        }
+
+        if (hasTutorFeedback) {
+            submission.setTutorFeedback(request.tutorFeedback());
+        }
         submission.setGrade(request.grade());
-        submission.setFeedbackStatus(FeedbackStatus.APPROVED);
+        // REVISED when the tutor added their own commentary on top of (or instead of) Sage's draft, APPROVED otherwise
+        submission.setFeedbackStatus(hasTutorFeedback ? FeedbackStatus.REVISED : FeedbackStatus.APPROVED);
         submission.setReleasedAt(LocalDateTime.now());
 
         submissionRepository.save(submission);

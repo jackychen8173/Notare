@@ -16,9 +16,9 @@ Tracking against the spec's build order (`docs/notare-system-prompt.md`). See `C
 3. ✅ User entity + JWT auth — register/login, stateless JWT filter, Spring Security 7 config
 4. ✅ Student + Course + Enrollment — tutor-scoped; no student-facing read access yet (deliberately deferred, spec doesn't define it)
 5. ✅ Session + SessionNote — tutor-scoped, same 404-not-403 ownership pattern as Course; `save_session_notes` upserts a single `SessionNote` per `Session`
-6. ✅ Assignment + Submission (no Sage yet) — Assignment reads/writes are tutor-scoped like Course; `submit_assignment` is the first STUDENT-role endpoint and checks course enrollment; `release_feedback` sets `feedback_status=APPROVED` since there's no Sage output yet to mark REVISED
-7. ⬜ SageService + Sage endpoints — **next up**
-8. ⬜ Next.js setup + design tokens
+6. ✅ Assignment + Submission — Assignment reads/writes are tutor-scoped like Course; `submit_assignment` is the first STUDENT-role endpoint and checks course enrollment; `release_feedback` now derives APPROVED vs REVISED from whether the tutor added their own commentary (retroactively refined once Sage gave the distinction meaning)
+7. ✅ SageService + Sage endpoints — all four Sage endpoints are manual/tutor-triggered (no auto-trigger wired into `submit_assignment` — kept phase 6 untouched, deliberately deferred per the "don't invent unstated behavior" precedent); model is `claude-sonnet-4-6` exactly as the spec names it (still an actively-supported model, so no EOL-style deviation applies)
+8. ⬜ Next.js setup + design tokens — **next up**
 9. ⬜ Layout shell (sidebar + nav)
 10. ⬜ Auth pages
 11. ⬜ Tutor screens
@@ -29,7 +29,7 @@ Tracking against the spec's build order (`docs/notare-system-prompt.md`). See `C
 - Backend only so far — no `frontend/` directory exists yet (phase 8+).
 - No Maven or JDK is installed in this dev environment, so nothing here has actually been compiled or run — everything was hand-reviewed against current docs instead. Worth installing both (or confirming IntelliJ's bundled JDK/Maven can be used) before trusting a build, and definitely before deploying.
 - No real database has been provisioned yet (no Railway Postgres instance), so migrations have never actually been applied — they've only been reviewed by hand, per the DB safety harness above.
-- Everything is pushed to `main` on `jackychen8173/Notare` through commit `0f38594`.
+- Everything is pushed to `main` on `jackychen8173/Notare` through commit `5f9429c`.
 
 ## Safety harnesses (always enforced, in every permission mode including auto mode)
 
