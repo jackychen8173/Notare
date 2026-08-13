@@ -12,12 +12,12 @@ The full original project spec (tech stack, data model, API design, Sage feedbac
 Tracking against the spec's build order (`docs/notare-system-prompt.md`). See `CHANGELOG.md` for the detailed why behind each change.
 
 1. ✅ Spring Boot setup + `pom.xml` — Spring Boot 4.1.0 / Java 21, not 3.3 (see "Project spec" above)
-2. ✅ Flyway migrations — added incrementally per phase, not all at once (`V1__create_users.sql`, `V2__create_courses.sql`, `V3__create_sessions.sql` so far)
+2. ✅ Flyway migrations — added incrementally per phase, not all at once (`V1__create_users.sql`, `V2__create_courses.sql`, `V3__create_sessions.sql`, `V4__create_assignments.sql`, `V5__create_submissions.sql` so far)
 3. ✅ User entity + JWT auth — register/login, stateless JWT filter, Spring Security 7 config
 4. ✅ Student + Course + Enrollment — tutor-scoped; no student-facing read access yet (deliberately deferred, spec doesn't define it)
 5. ✅ Session + SessionNote — tutor-scoped, same 404-not-403 ownership pattern as Course; `save_session_notes` upserts a single `SessionNote` per `Session`
-6. ⬜ Assignment + Submission (no Sage yet) — **next up**
-7. ⬜ SageService + Sage endpoints
+6. ✅ Assignment + Submission (no Sage yet) — Assignment reads/writes are tutor-scoped like Course; `submit_assignment` is the first STUDENT-role endpoint and checks course enrollment; `release_feedback` sets `feedback_status=APPROVED` since there's no Sage output yet to mark REVISED
+7. ⬜ SageService + Sage endpoints — **next up**
 8. ⬜ Next.js setup + design tokens
 9. ⬜ Layout shell (sidebar + nav)
 10. ⬜ Auth pages
@@ -29,7 +29,7 @@ Tracking against the spec's build order (`docs/notare-system-prompt.md`). See `C
 - Backend only so far — no `frontend/` directory exists yet (phase 8+).
 - No Maven or JDK is installed in this dev environment, so nothing here has actually been compiled or run — everything was hand-reviewed against current docs instead. Worth installing both (or confirming IntelliJ's bundled JDK/Maven can be used) before trusting a build, and definitely before deploying.
 - No real database has been provisioned yet (no Railway Postgres instance), so migrations have never actually been applied — they've only been reviewed by hand, per the DB safety harness above.
-- Everything is pushed to `main` on `jackychen8173/Notare` through commit `0ef50f9`.
+- Everything is pushed to `main` on `jackychen8173/Notare` through commit `0f38594`.
 
 ## Safety harnesses (always enforced, in every permission mode including auto mode)
 
