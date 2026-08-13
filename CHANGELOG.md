@@ -2,6 +2,10 @@
 
 Notable changes to this project, most recent first. See `CLAUDE.md` for when to add an entry.
 
+## 2026-08-13
+
+- Added a "Progress" section to `CLAUDE.md` tracking status against the spec's 13-phase build order, plus a "state a new session should know" note (no frontend yet, no Maven/JDK locally so nothing's been compiled, no real database provisioned so migrations are unverified beyond hand review). Pausing work here for now; next up is Session + SessionNote.
+
 ## 2026-08-12
 
 - Added Student, Course, and Enrollment management, all scoped to the owning tutor. There's no separate `Student` entity — students are `User`s with `role=STUDENT`, per the spec's data model — so `student/StudentService` operates on `UserRepository` directly (added `findByRole`). `Enrollment` uses a composite key (`student_id`, `course_id`) via `@EmbeddedId`/`@MapsId` rather than a synthetic UUID id, since the spec's data model conspicuously omits an `id` field for it (unlike every other entity, which lists one first) — a student can only have one enrollment row per course. `V2__create_courses.sql` creates both `courses` and `enrollments`, matching the spec's migration numbering (no separate enrollment migration was listed). All Student/Course/Enrollment endpoints are `@PreAuthorize("hasRole('TUTOR')")`, scoped to courses the calling tutor owns (cross-tutor access returns 404, not 403, to avoid confirming another tutor's course exists) — deliberately not building student-facing read access yet, since the spec doesn't detail that and it would mean inventing unstated authorization rules. `CourseService`'s read methods are `@Transactional(readOnly = true)` so the DTO mappers can safely resolve the lazy `tutor`/`student` associations before the transaction closes (needed since `open-in-view: false` is set). Reviewed by hand as with prior backend changes — no Maven/JDK available locally.
