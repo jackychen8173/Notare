@@ -147,9 +147,22 @@
   --neutral-50: #f1efe8;
 }
 
-/* 0.5px borders only — use instead of Tailwind's default `border` (1px) */
+/* 0.5px borders only — use instead of Tailwind's default `border` (1px).
+   Directional variants for single-side borders (sidebar rail, top nav). */
 @utility border-hairline {
   border-width: 0.5px;
+}
+@utility border-t-hairline {
+  border-top-width: 0.5px;
+}
+@utility border-r-hairline {
+  border-right-width: 0.5px;
+}
+@utility border-b-hairline {
+  border-bottom-width: 0.5px;
+}
+@utility border-l-hairline {
+  border-left-width: 0.5px;
 }
 
 @layer base {
