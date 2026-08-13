@@ -56,6 +56,14 @@ public class SessionController {
         return ResponseEntity.ok(ApiResponse.success(sessionService.completeSession(id, authentication.getName())));
     }
 
+    @GetMapping("/{id}/notes")
+    public ResponseEntity<ApiResponse<SessionNoteResponse>> getSessionNotes(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(sessionService.getSessionNotes(id, authentication.getName())));
+    }
+
     @PostMapping("/{id}/notes")
     public ResponseEntity<ApiResponse<SessionNoteResponse>> saveSessionNotes(
             @PathVariable UUID id,

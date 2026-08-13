@@ -96,6 +96,14 @@ public class SessionService {
         return SessionResponse.from(session);
     }
 
+    @Transactional(readOnly = true)
+    public SessionNoteResponse getSessionNotes(UUID sessionId, String tutorEmail) {
+        Session session = requireOwnedSession(sessionId, tutorEmail);
+        return sessionNoteRepository.findBySessionId(session.getId())
+                .map(SessionNoteResponse::from)
+                .orElse(null);
+    }
+
     public SessionNoteResponse saveSessionNotes(UUID sessionId, SaveSessionNotesRequest request, String tutorEmail) {
         Session session = requireOwnedSession(sessionId, tutorEmail);
 

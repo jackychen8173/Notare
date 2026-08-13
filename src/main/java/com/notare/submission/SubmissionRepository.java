@@ -9,5 +9,7 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
 
     List<Submission> findByStudentIdAndAssignment_Course_Tutor_Id(UUID studentId, UUID tutorId);
 
+    List<Submission> findByAssignmentId(UUID assignmentId);
+
     long countByFeedbackStatusAndAssignment_Course_Tutor_Id(FeedbackStatus feedbackStatus, UUID tutorId);
 }

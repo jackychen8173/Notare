@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -62,6 +63,19 @@ public class SubmissionService {
         return SubmissionResponse.from(submission);
     }
 
+    @Transactional(readOnly = true)
+    public SubmissionResponse getSubmission(UUID submissionId, String tutorEmail) {
+        return SubmissionResponse.from(requireOwnedSubmission(submissionId, tutorEmail));
+    }
+
+    @Transactional(readOnly = true)
+    public List<SubmissionResponse> listSubmissionsForAssignment(UUID assignmentId, String tutorEmail) {
+        Assignment assignment = requireOwnedAssignment(assignmentId, tutorEmail);
+        return submissionRepository.findByAssignmentId(assignment.getId()).stream()
+                .map(SubmissionResponse::from)
+                .toList();
+    }
+
     public SubmissionResponse releaseFeedback(UUID submissionId, ReleaseFeedbackRequest request, String tutorEmail) {
         Submission submission = requireOwnedSubmission(submissionId, tutorEmail);
 
@@ -106,5 +120,18 @@ public class SubmissionService {
         }
 
         return submission;
+    }
+
+    private Assignment requireOwnedAssignment(UUID assignmentId, String tutorEmail) {
+        User tutor = requireTutor(tutorEmail);
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+
+        if (!assignment.getCourse().getTutor().getId().equals(tutor.getId())) {
+            // 404, not 403 - avoid confirming another tutor's assignment exists
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
+        }
+
+        return assignment;
     }
 }

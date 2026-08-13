@@ -7,3 +7,10 @@ export interface AuthSession {
   email: string;
   role: UserRole;
 }
+
+export interface Student {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+}

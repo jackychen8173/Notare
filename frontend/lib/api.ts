@@ -2,6 +2,12 @@ import axios from "axios";
 
 import { clearSession, getToken } from "@/lib/auth";
 
+export interface ApiEnvelope<T> {
+  success: boolean;
+  message: string | null;
+  data: T;
+}
+
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080",
 });
