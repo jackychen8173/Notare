@@ -1,5 +1,12 @@
 # Notare — Working Rules
 
+## Project spec
+
+The full original project spec (tech stack, data model, API design, Sage feedback format, design system, folder structure, role-switching commands, coding standards, build order) lives in `docs/notare-system-prompt.md`, kept verbatim as originally written. Known deviations from it, made deliberately as the project progressed:
+
+- **Spring Boot 4.1 / Java 21, not Spring Boot 3.3** — the entire 3.x line reached end-of-life in June 2026, see `CHANGELOG.md`. This changed some artifact/package names (`spring-boot-starter-webmvc`, explicit `spring-boot-starter-flyway`, per-technology test starters).
+- A few classes exist beyond the spec's illustrative folder tree because they're structurally required, not optional: `NotareApplication.java` (entry point), `auth/JwtAuthenticationFilter.java` (JWT can't protect endpoints without a filter), and an `auth/dto/` subpackage for request/response DTOs (the spec's "DTOs for all request/response objects" rule needs somewhere to live).
+
 ## Safety harnesses (always enforced, in every permission mode including auto mode)
 
 1. **No file deletion without confirmation.** `rm`, `git rm`, `git clean`, `Remove-Item`, `rmdir`, `del`, and similar always require an explicit confirmation prompt.
