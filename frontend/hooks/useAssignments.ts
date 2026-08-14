@@ -8,6 +8,8 @@ import type { Assignment } from "@/types/assignment";
 export const assignmentKeys = {
   forCourse: (courseId: string) => ["courses", courseId, "assignments"] as const,
   detail: (id: string) => ["assignments", id] as const,
+  forMyCourse: (courseId: string) => ["student", "courses", courseId, "assignments"] as const,
+  mineDetail: (id: string) => ["student", "assignments", id] as const,
 };
 
 async function fetchCourseAssignments(courseId: string): Promise<Assignment[]> {
@@ -17,6 +19,18 @@ async function fetchCourseAssignments(courseId: string): Promise<Assignment[]> {
 
 async function fetchAssignment(id: string): Promise<Assignment> {
   const res = await api.get<ApiEnvelope<Assignment>>(`/api/assignments/${id}`);
+  return res.data.data;
+}
+
+async function fetchMyCourseAssignments(courseId: string): Promise<Assignment[]> {
+  const res = await api.get<ApiEnvelope<Assignment[]>>(
+    `/api/student/courses/${courseId}/assignments`,
+  );
+  return res.data.data;
+}
+
+async function fetchMyAssignment(id: string): Promise<Assignment> {
+  const res = await api.get<ApiEnvelope<Assignment>>(`/api/student/assignments/${id}`);
   return res.data.data;
 }
 
@@ -32,6 +46,22 @@ export function useAssignment(id: string) {
   return useQuery({
     queryKey: assignmentKeys.detail(id),
     queryFn: () => fetchAssignment(id),
+    enabled: !!id,
+  });
+}
+
+export function useMyCourseAssignments(courseId: string) {
+  return useQuery({
+    queryKey: assignmentKeys.forMyCourse(courseId),
+    queryFn: () => fetchMyCourseAssignments(courseId),
+    enabled: !!courseId,
+  });
+}
+
+export function useMyAssignment(id: string) {
+  return useQuery({
+    queryKey: assignmentKeys.mineDetail(id),
+    queryFn: () => fetchMyAssignment(id),
     enabled: !!id,
   });
 }

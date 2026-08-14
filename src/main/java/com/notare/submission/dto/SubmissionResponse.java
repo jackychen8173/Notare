@@ -34,4 +34,26 @@ public record SubmissionResponse(
                 submission.getReleasedAt()
         );
     }
+
+    /**
+     * Student-facing view: sageFeedback/tutorFeedback/grade are withheld until
+     * releasedAt is set, per the "Sage feedback is NEVER shown to students
+     * without tutor approval" constraint.
+     */
+    public static SubmissionResponse forStudent(Submission submission) {
+        boolean released = submission.getReleasedAt() != null;
+        return new SubmissionResponse(
+                submission.getId(),
+                submission.getAssignment().getId(),
+                submission.getStudent().getId(),
+                submission.getStudent().getName(),
+                submission.getContent(),
+                released ? submission.getSageFeedback() : null,
+                released ? submission.getTutorFeedback() : null,
+                submission.getFeedbackStatus(),
+                released ? submission.getGrade() : null,
+                submission.getSubmittedAt(),
+                submission.getReleasedAt()
+        );
+    }
 }

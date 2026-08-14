@@ -9,11 +9,21 @@ export const sessionKeys = {
   all: ["sessions"] as const,
   detail: (id: string) => ["sessions", id] as const,
   notes: (id: string) => ["sessions", id, "notes"] as const,
+  mine: ["student", "sessions"] as const,
 };
 
 async function fetchSessions(): Promise<Session[]> {
   const res = await api.get<ApiEnvelope<Session[]>>("/api/sessions");
   return res.data.data;
+}
+
+async function fetchMySessions(): Promise<Session[]> {
+  const res = await api.get<ApiEnvelope<Session[]>>("/api/student/sessions");
+  return res.data.data;
+}
+
+export function useMySessions() {
+  return useQuery({ queryKey: sessionKeys.mine, queryFn: fetchMySessions });
 }
 
 async function fetchSession(id: string): Promise<Session> {

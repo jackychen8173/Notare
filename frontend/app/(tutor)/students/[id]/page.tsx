@@ -248,7 +248,7 @@ export default function StudentDetailPage({
         ) : studentSessions.length > 0 ? (
           <div className="flex flex-col gap-3">
             {studentSessions.map((session) => (
-              <SessionCard key={session.id} session={session} />
+              <SessionCard key={session.id} session={session} href={`/sessions/${session.id}`} />
             ))}
           </div>
         ) : (

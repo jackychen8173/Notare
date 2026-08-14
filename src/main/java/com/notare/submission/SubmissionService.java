@@ -64,6 +64,25 @@ public class SubmissionService {
     }
 
     @Transactional(readOnly = true)
+    public SubmissionResponse getMySubmission(UUID assignmentId, String studentEmail) {
+        User student = requireStudent(studentEmail);
+
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+
+        boolean enrolled = enrollmentRepository.existsByStudentIdAndCourseId(
+                student.getId(), assignment.getCourse().getId());
+        if (!enrolled) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not enrolled in this assignment's course");
+        }
+
+        return submissionRepository
+                .findFirstByStudentIdAndAssignmentIdOrderBySubmittedAtDesc(student.getId(), assignmentId)
+                .map(SubmissionResponse::forStudent)
+                .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
     public SubmissionResponse getSubmission(UUID submissionId, String tutorEmail) {
         return SubmissionResponse.from(requireOwnedSubmission(submissionId, tutorEmail));
     }

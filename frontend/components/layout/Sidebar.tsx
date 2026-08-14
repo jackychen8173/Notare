@@ -2,17 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconBook2, IconLayoutDashboard, IconUsers } from "@tabler/icons-react";
+import type { ComponentType } from "react";
 
 import { cn } from "@/lib/utils";
 
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
-  { href: "/students", label: "Students", icon: IconUsers },
-  { href: "/courses", label: "Courses", icon: IconBook2 },
-];
+export interface SidebarNavItem {
+  href: string;
+  label: string;
+  icon: ComponentType<{ className?: string; stroke?: number }>;
+}
 
-export function Sidebar() {
+interface SidebarProps {
+  items: SidebarNavItem[];
+}
+
+export function Sidebar({ items }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -21,7 +25,7 @@ export function Sidebar() {
         <span className="text-lg font-medium text-sidebar-foreground">Notare</span>
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-3">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (

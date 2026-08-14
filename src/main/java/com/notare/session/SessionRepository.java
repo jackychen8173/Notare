@@ -10,4 +10,6 @@ public interface SessionRepository extends JpaRepository<Session, UUID> {
     List<Session> findByTutorId(UUID tutorId);
 
     List<Session> findByTutorIdAndStudentId(UUID tutorId, UUID studentId);
+
+    List<Session> findByStudentId(UUID studentId);
 }

@@ -82,6 +82,20 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
+    public List<CourseResponse> listEnrolledCourses(String studentEmail) {
+        User student = requireStudentUser(studentEmail);
+        return enrollmentRepository.findByStudentId(student.getId()).stream()
+                .map(Enrollment::getCourse)
+                .map(CourseResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CourseResponse getEnrolledCourse(UUID courseId, String studentEmail) {
+        return CourseResponse.from(requireEnrolledCourse(courseId, studentEmail));
+    }
+
+    @Transactional(readOnly = true)
     public List<StudentResponse> listEnrolledStudents(UUID courseId, String tutorEmail) {
         Course course = requireOwnedCourse(courseId, tutorEmail);
         return enrollmentRepository.findByCourseId(course.getId()).stream()
@@ -92,6 +106,25 @@ public class CourseService {
     private User requireTutor(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
+    private User requireStudentUser(String email) {
+        return userRepository.findByEmail(email)
+                .filter(user -> user.getRole() == UserRole.STUDENT)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
+    private Course requireEnrolledCourse(UUID courseId, String studentEmail) {
+        User student = requireStudentUser(studentEmail);
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+
+        if (!enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), course.getId())) {
+            // 404, not 403 - avoid confirming the course exists if the student isn't enrolled
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found");
+        }
+
+        return course;
     }
 
     private Course requireOwnedCourse(UUID courseId, String tutorEmail) {

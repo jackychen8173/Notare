@@ -10,6 +10,8 @@ export const courseKeys = {
   all: ["courses"] as const,
   detail: (id: string) => ["courses", id] as const,
   students: (id: string) => ["courses", id, "students"] as const,
+  mine: ["student", "courses"] as const,
+  mineDetail: (id: string) => ["student", "courses", id] as const,
 };
 
 async function fetchCourses(): Promise<Course[]> {
@@ -27,12 +29,34 @@ async function fetchEnrolledStudents(id: string): Promise<Student[]> {
   return res.data.data;
 }
 
+async function fetchMyCourses(): Promise<Course[]> {
+  const res = await api.get<ApiEnvelope<Course[]>>("/api/student/courses");
+  return res.data.data;
+}
+
+async function fetchMyCourse(id: string): Promise<Course> {
+  const res = await api.get<ApiEnvelope<Course>>(`/api/student/courses/${id}`);
+  return res.data.data;
+}
+
 export function useCourses() {
   return useQuery({ queryKey: courseKeys.all, queryFn: fetchCourses });
 }
 
 export function useCourse(id: string) {
   return useQuery({ queryKey: courseKeys.detail(id), queryFn: () => fetchCourse(id), enabled: !!id });
+}
+
+export function useMyCourses() {
+  return useQuery({ queryKey: courseKeys.mine, queryFn: fetchMyCourses });
+}
+
+export function useMyCourse(id: string) {
+  return useQuery({
+    queryKey: courseKeys.mineDetail(id),
+    queryFn: () => fetchMyCourse(id),
+    enabled: !!id,
+  });
 }
 
 export function useEnrolledStudents(id: string) {

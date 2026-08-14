@@ -10,6 +10,8 @@ export const submissionKeys = {
   forAssignment: (assignmentId: string) => ["assignments", assignmentId, "submissions"] as const,
   detail: (id: string) => ["submissions", id] as const,
   pendingReviews: ["sage", "pending-reviews"] as const,
+  mineForAssignment: (assignmentId: string) =>
+    ["student", "assignments", assignmentId, "submission"] as const,
 };
 
 async function fetchAssignmentSubmissions(assignmentId: string): Promise<Submission[]> {
@@ -47,6 +49,37 @@ export function useSubmission(id: string) {
 
 export function usePendingReviews() {
   return useQuery({ queryKey: submissionKeys.pendingReviews, queryFn: fetchPendingReviews });
+}
+
+async function fetchMySubmission(assignmentId: string): Promise<Submission | null> {
+  const res = await api.get<ApiEnvelope<Submission | null>>(
+    `/api/student/assignments/${assignmentId}/submission`,
+  );
+  return res.data.data;
+}
+
+export function useMySubmission(assignmentId: string) {
+  return useQuery({
+    queryKey: submissionKeys.mineForAssignment(assignmentId),
+    queryFn: () => fetchMySubmission(assignmentId),
+    enabled: !!assignmentId,
+  });
+}
+
+export function useSubmitAssignment(assignmentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (content: string) => {
+      const res = await api.post<ApiEnvelope<Submission>>(
+        `/api/assignments/${assignmentId}/submit`,
+        { content },
+      );
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: submissionKeys.mineForAssignment(assignmentId) });
+    },
+  });
 }
 
 export function useReviewSubmission(id: string) {

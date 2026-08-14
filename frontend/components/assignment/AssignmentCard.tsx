@@ -5,11 +5,13 @@ import type { Assignment } from "@/types/assignment";
 
 interface AssignmentCardProps {
   assignment: Assignment;
+  /** Defaults to the tutor detail route; pass the student route explicitly there. */
+  href?: string;
 }
 
-export function AssignmentCard({ assignment }: AssignmentCardProps) {
+export function AssignmentCard({ assignment, href }: AssignmentCardProps) {
   return (
-    <Link href={`/assignments/${assignment.id}`}>
+    <Link href={href ?? `/assignments/${assignment.id}`}>
       <Card className="transition-colors hover:bg-muted/40">
         <CardContent>
           <p className="font-medium text-foreground">{assignment.title}</p>

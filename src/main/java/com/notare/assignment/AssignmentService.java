@@ -4,8 +4,10 @@ import com.notare.assignment.dto.AssignmentResponse;
 import com.notare.assignment.dto.CreateAssignmentRequest;
 import com.notare.course.Course;
 import com.notare.course.CourseRepository;
+import com.notare.course.EnrollmentRepository;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
+import com.notare.user.UserRole;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,15 +22,18 @@ public class AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
     private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
 
     public AssignmentService(
             AssignmentRepository assignmentRepository,
             CourseRepository courseRepository,
+            EnrollmentRepository enrollmentRepository,
             UserRepository userRepository
     ) {
         this.assignmentRepository = assignmentRepository;
         this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
     }
 
@@ -60,9 +65,54 @@ public class AssignmentService {
         return AssignmentResponse.from(requireOwnedAssignment(assignmentId, tutorEmail));
     }
 
+    @Transactional(readOnly = true)
+    public List<AssignmentResponse> listAssignmentsForEnrolledCourse(UUID courseId, String studentEmail) {
+        Course course = requireEnrolledCourseForAssignments(courseId, studentEmail);
+        return assignmentRepository.findByCourseId(course.getId()).stream()
+                .map(AssignmentResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public AssignmentResponse getAssignmentForStudent(UUID assignmentId, String studentEmail) {
+        return AssignmentResponse.from(requireEnrolledAssignment(assignmentId, studentEmail));
+    }
+
     private User requireTutor(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
+    private User requireStudentUser(String email) {
+        return userRepository.findByEmail(email)
+                .filter(user -> user.getRole() == UserRole.STUDENT)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
+    private Course requireEnrolledCourseForAssignments(UUID courseId, String studentEmail) {
+        User student = requireStudentUser(studentEmail);
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
+
+        if (!enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), course.getId())) {
+            // 404, not 403 - avoid confirming the course exists if the student isn't enrolled
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found");
+        }
+
+        return course;
+    }
+
+    private Assignment requireEnrolledAssignment(UUID assignmentId, String studentEmail) {
+        User student = requireStudentUser(studentEmail);
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+
+        if (!enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), assignment.getCourse().getId())) {
+            // 404, not 403 - avoid confirming the assignment exists if the student isn't enrolled
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
+        }
+
+        return assignment;
     }
 
     private Course requireOwnedCourse(UUID courseId, String tutorEmail) {

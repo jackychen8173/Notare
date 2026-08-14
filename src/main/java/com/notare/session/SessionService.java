@@ -79,6 +79,14 @@ public class SessionService {
     }
 
     @Transactional(readOnly = true)
+    public List<SessionResponse> listSessionsForStudent(String studentEmail) {
+        User student = requireStudentUser(studentEmail);
+        return sessionRepository.findByStudentId(student.getId()).stream()
+                .map(SessionResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public SessionResponse getSession(UUID sessionId, String tutorEmail) {
         return SessionResponse.from(requireOwnedSession(sessionId, tutorEmail));
     }
@@ -118,6 +126,12 @@ public class SessionService {
 
     private User requireTutor(String email) {
         return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
+    private User requireStudentUser(String email) {
+        return userRepository.findByEmail(email)
+                .filter(user -> user.getRole() == UserRole.STUDENT)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 
