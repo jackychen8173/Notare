@@ -117,7 +117,10 @@ function ScheduleSessionDialog({ studentId }: { studentId: string }) {
     reset,
     control,
     formState: { errors },
-  } = useForm<ScheduleSessionValues>({ resolver: zodResolver(scheduleSessionSchema) });
+  } = useForm<ScheduleSessionValues>({
+    resolver: zodResolver(scheduleSessionSchema),
+    defaultValues: { courseId: "" },
+  });
 
   function onSubmit(values: ScheduleSessionValues) {
     createSession.mutate(
@@ -153,7 +156,9 @@ function ScheduleSessionDialog({ studentId }: { studentId: string }) {
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="course" className="w-full">
-                    <SelectValue placeholder="No course" />
+                    <SelectValue placeholder="No course">
+                      {(value: string | null) => courses.data?.find((c) => c.id === value)?.name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {courses.data?.map((course) => (

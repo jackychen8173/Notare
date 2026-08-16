@@ -49,7 +49,10 @@ function EnrollStudentDialog({ courseId }: { courseId: string }) {
     reset,
     control,
     formState: { errors },
-  } = useForm<EnrollValues>({ resolver: zodResolver(enrollSchema) });
+  } = useForm<EnrollValues>({
+    resolver: zodResolver(enrollSchema),
+    defaultValues: { studentId: "" },
+  });
 
   const enrolledIds = useMemo(() => new Set((enrolled.data ?? []).map((s) => s.id)), [enrolled.data]);
   const available = (students.data ?? []).filter((s) => !enrolledIds.has(s.id));
@@ -85,7 +88,9 @@ function EnrollStudentDialog({ courseId }: { courseId: string }) {
               render={({ field }) => (
                 <Select value={field.value} onValueChange={field.onChange}>
                   <SelectTrigger id="student" className="w-full">
-                    <SelectValue placeholder="Choose a student" />
+                    <SelectValue placeholder="Choose a student">
+                      {(value: string | null) => available.find((s) => s.id === value)?.name}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {available.map((s) => (
