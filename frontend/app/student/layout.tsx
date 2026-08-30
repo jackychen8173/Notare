@@ -4,6 +4,7 @@ import { IconBook2, IconLayoutDashboard } from "@tabler/icons-react";
 
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNav } from "@/components/layout/TopNav";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 const navItems = [
   { href: "/student/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
@@ -11,6 +12,9 @@ const navItems = [
 ];
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
+  const authorized = useAuthGuard("STUDENT");
+  if (!authorized) return null;
+
   return (
     <div className="flex min-h-screen">
       <Sidebar items={navItems} />
