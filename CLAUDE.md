@@ -39,7 +39,7 @@ Tracking against the spec's build order (`docs/notare-system-prompt.md`). See `C
 - The `preview` Vercel environment has no `NEXT_PUBLIC_API_URL` set (CLI quirk, see phase 13 above) — only `production` does. Preview deployments of the frontend will have a broken/undefined API URL until that's resolved.
 - With the spec's build order finished, future work here is maintenance/enhancement, not the original phase list — e.g. the standing note about zero test files in `src/test/` despite the test starters being on the classpath (see phase 13's `CHANGELOG.md` entry from 2026-08-15).
 
-## CI/CD (post-launch, in progress — paused mid-setup)
+## CI/CD (post-launch, in progress)
 
 Goal: `main` becomes a protected trunk (no direct pushes, only updated via PR merge, PR requires the CI check to pass) that Vercel/Railway both deploy to production from; `develop` is the everyday working branch.
 
@@ -47,14 +47,16 @@ Goal: `main` becomes a protected trunk (no direct pushes, only updated via PR me
 - `.github/workflows/ci.yml` — backend `./mvnw compile` + frontend `npm run lint && npm run build`, triggers on PRs into `main` and pushes to `develop`. Verified working for real: ran and passed on the `develop` push (checked via the public GitHub API, `GET /repos/jackychen8173/Notare/actions/runs`).
 - `develop` branch created and pushed to `origin`.
 - Vercel project `notare-frontend` connected to the GitHub repo (done manually via the dashboard — Settings → Git — since `vercel git connect` needs the Vercel GitHub App authorized in-browser and can't complete non-interactively from the CLI). Production branch should default to `main` automatically; not yet double-checked.
+- **Vercel Root Directory set to `frontend`** (2026-08-29, dashboard — Settings → Build and Deployment) — every git-triggered build had been failing silently (`Couldn't find any pages or app directory`, building from repo root instead of `frontend/`) since the git connection above was set up, including two production deploys. Production had actually been serving a 14-day-old `vercel --prod` CLI deploy this whole time, not reflecting phases 9–13. Fixed and verified for real: redeployed the stuck production + PR-preview deployments (`vercel redeploy <url> --scope jackychen8173s-projects --target production|preview`), confirmed the live site no longer shows the phase-8 placeholder, confirmed the PR's Vercel check went from fail to pass. See `CHANGELOG.md` 2026-08-29 for the full writeup — worth reading if another git-triggered Vercel build ever fails with a similar "can't find app directory" error.
 - Railway `backend` service connected to GitHub via `railway service source connect --repo jackychen8173/Notare --branch main --service backend` — this one *did* work non-interactively from the CLI (no browser step needed, unlike Vercel). Verified: connecting it triggered an automatic redeploy from `main`, which succeeded.
+- **GitHub branch protection on `main`** — `gh auth login --web` completed 2026-08-29 (logged in as `jackychen8173`; previous session's blocker was that `gh` wasn't on PATH, workaround `export PATH="$PATH:/c/Program Files/GitHub CLI"`). Set via `gh api repos/jackychen8173/Notare/branches/main/protection -X PUT`: required status checks `Backend (Maven)` + `Frontend (Next.js)` (strict — PR branch must be up to date with `main`), PR required with `required_approving_review_count: 0` (0, not omitted — a solo GitHub account can't approve its own PR, so requiring ≥1 review would deadlock merges), `enforce_admins: true` (no bypass, including for the repo owner), force-push and branch deletion both disabled. Confirmed live via `GET .../protection` returning 200 (was a 404 "Branch not protected" beforehand).
 - Everything above is pushed to `origin` (`main` and `develop` both exist there now).
 
-**Not done yet — this is where we paused:**
-- **GitHub branch protection on `main`** (require PR, require the CI check, block direct pushes) — blocked on `gh` CLI auth. `gh` was installed via `winget install --id GitHub.cli` but isn't on PATH in already-open shell sessions (needs a fresh terminal, or prefix commands with `export PATH="$PATH:/c/Program Files/GitHub CLI" &&` as a workaround). Next step once authenticated: `gh auth login --web`, then set the protection rule (likely via `gh api repos/jackychen8173/Notare/branches/main/protection -X PUT ...` — required status check name is the CI workflow's job names, `Backend (Maven)` / `Frontend (Next.js)`).
+**Not done yet:**
 - Vercel's production branch setting hasn't been explicitly confirmed as `main` (just assumed from the default).
 - `develop` pushes only trigger a **frontend** preview deploy (Vercel does this automatically once git-connected) — the Railway **backend** is only wired to deploy from `main`, so backend changes on `develop` won't get their own preview/staging deploy without further setup (not started; out of scope unless asked for).
 - The earlier-noted Vercel `preview` env var gap (`NEXT_PUBLIC_API_URL` unset for `preview`) is still unresolved and now more relevant, since `develop` pushes will actually produce preview deployments once Vercel's git connection is confirmed working.
+- Now that `main` requires PRs, the direct-push-to-`main` workflow used for all prior commits (including today's root-page fix, pushed just before protection went live) no longer applies going forward — future changes need a branch + PR into `main`, or a push to `develop` first.
 
 ## Safety harnesses (always enforced, in every permission mode including auto mode)
 
