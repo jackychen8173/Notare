@@ -2,6 +2,11 @@
 
 Notable changes to this project, most recent first. See `CLAUDE.md` for when to add an entry.
 
+## 2026-08-29
+
+- Fixed the root `/` route on the deployed frontend — `app/page.tsx` had never been touched since the phase 8 scaffold commit and still showed the original design-token smoke-test placeholder ("Tutor and student screens haven't been built yet..."), even though phases 9–13 built out the real app. Nobody noticed because every internal link points straight at `/dashboard` or `/student/dashboard`; only hitting the bare production URL surfaced it. Replaced it with a client-side redirect based on `getSession()`: no session → `/login`, `TUTOR` → `/dashboard`, `STUDENT` → `/student/dashboard`, matching the same role-branch already used in the login page. Verified with `npm run build`/`lint` (all 14 routes, no new warnings) and a live dev-server hit confirming `/` returns 200 and hands off to the client redirect.
+- While investigating, also found there's no route-level auth guard on `(tutor)/layout.tsx` or `student/layout.tsx` — protected pages currently rely entirely on API calls 401'ing and the axios interceptor hard-redirecting afterward, so an unauthenticated visit briefly renders the shell first. Not fixed yet — flagged as a follow-up, out of scope for this fix.
+
 ## 2026-08-16
 
 - Deployed the backend to Railway for real — `notare` project, Postgres + `backend` services, first genuine cloud deploy. Flyway applied all 5 migrations against a real production database for the first time. Hit and fixed a real build failure along the way: Railway's Railpack builder installs the JDK via `mise`, and `mvnw`'s own JDK auto-detection (resolving `JAVA_HOME` from `readlink -f $(which java)`) fails against mise's shim — `Error: JAVA_HOME is not defined correctly. We cannot execute /usr/local/bin/java`. A manual `readlink`-based `JAVA_HOME` override hit the identical failure (same broken resolution mvnw already does internally); the fix was `eval "$(mise env -s bash)"` before `./mvnw`, which asks mise itself for the correct environment rather than re-deriving it. Committed as `railway.json` (`build.buildCommand` override) so the fix is picked up on every future build, not just this one. Also generated a public domain (`backend-production-83b58.up.railway.app`) and verified `/v3/api-docs` returns real data over the public internet.
