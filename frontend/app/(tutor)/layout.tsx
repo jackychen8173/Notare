@@ -20,7 +20,7 @@ export default function TutorLayout({ children }: { children: React.ReactNode })
     <div className="flex min-h-screen">
       <Sidebar items={navItems} />
       <div className="flex flex-1 flex-col">
-        <TopNav />
+        <TopNav profileHref="/profile" />
         <main className="flex-1 p-8">{children}</main>
       </div>
     </div>

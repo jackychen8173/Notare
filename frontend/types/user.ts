@@ -14,3 +14,11 @@ export interface Student {
   email: string;
   createdAt: string;
 }
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+}
