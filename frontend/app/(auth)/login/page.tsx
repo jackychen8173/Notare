@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
@@ -100,6 +101,13 @@ export default function LoginPage() {
             <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
               {isSubmitting ? "Signing in..." : "Sign in"}
             </Button>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link href="/register" className="text-foreground underline underline-offset-4">
+                Sign up
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>
