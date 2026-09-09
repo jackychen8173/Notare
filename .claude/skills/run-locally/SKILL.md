@@ -41,6 +41,8 @@ export CORS_ALLOWED_ORIGINS="http://localhost:3000"
 
 Runs on `http://localhost:8080`. Flyway auto-migrates on startup (harmless against this disposable local DB — the repo-wide "no DB mutation" safety harness is about production/shared databases). Swagger UI at `/swagger-ui.html`.
 
+Shortcut: `scripts/run-backend.ps1` (PowerShell) or `scripts/run-backend.sh` (bash/Git Bash) does the `docker start` + all the exports + `./mvnw.cmd spring-boot:run` in one command.
+
 Sanity check once it's up:
 ```bash
 curl -s http://localhost:8080/v3/api-docs -o /dev/null -w "%{http_code}\n"   # expect 200

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Starts the disposable local Postgres container and runs the Spring Boot backend
+# against it. See .claude/skills/run-locally/SKILL.md for the full breakdown.
+set -e
+
+docker start notare-local-pg
+
+export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-21.0.7.6-hotspot"
+export DATABASE_URL="jdbc:postgresql://localhost:55432/notare"
+export DATABASE_USERNAME="notare"
+export DATABASE_PASSWORD="changeme"
+export JWT_SECRET="local-dev-secret-key-not-for-production-use-only-abcdefghijklmnop"
+export CORS_ALLOWED_ORIGINS="http://localhost:3000"
+
+./mvnw.cmd spring-boot:run
