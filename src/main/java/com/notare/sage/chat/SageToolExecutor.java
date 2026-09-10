@@ -32,6 +32,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -186,8 +187,7 @@ public class SageToolExecutor {
     }
 
     private SubmissionResponse getSubmission(Map<String, Object> input, User tutor) {
-        Submission submission = requireOwnedSubmission(uuidParam(input, "submissionId"), tutor);
-        return SubmissionResponse.from(submission, List.of());
+        return submissionService.getSubmission(uuidParam(input, "submissionId"), tutor.getEmail());
     }
 
     private List<SessionResponse> listSessions(Map<String, Object> input, User tutor) {
@@ -218,10 +218,11 @@ public class SageToolExecutor {
 
     private SessionResponse scheduleSession(Map<String, Object> input, User tutor) {
         UUID studentId = uuidParam(input, "studentId");
+        requireVisibleStudent(studentId, tutor);
         UUID courseId = input.get("courseId") != null ? uuidParam(input, "courseId") : null;
-        LocalDateTime date = LocalDateTime.parse(String.valueOf(input.get("date")));
+        LocalDateTime date = dateTimeParam(input, "date");
         String subject = String.valueOf(input.get("subject"));
-        int duration = ((Number) input.get("duration")).intValue();
+        int duration = intParam(input, "duration");
         return sessionService.createSession(
                 new CreateSessionRequest(studentId, courseId, date, subject, duration), tutor.getEmail());
     }
@@ -294,6 +295,29 @@ public class SageToolExecutor {
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid UUID for " + key + ": " + value);
         }
+    }
+
+    private LocalDateTime dateTimeParam(Map<String, Object> input, String key) {
+        Object value = input.get(key);
+        if (value == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing required parameter: " + key);
+        }
+        try {
+            return LocalDateTime.parse(String.valueOf(value));
+        } catch (DateTimeParseException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date-time for " + key + ": " + value);
+        }
+    }
+
+    private int intParam(Map<String, Object> input, String key) {
+        Object value = input.get(key);
+        if (value == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing required parameter: " + key);
+        }
+        if (!(value instanceof Number number)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid number for " + key + ": " + value);
+        }
+        return number.intValue();
     }
 
     private String toJson(Object value) {
