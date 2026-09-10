@@ -108,8 +108,12 @@ public class SageToolExecutor {
             case "release_feedback" -> {
                 Submission submission = requireOwnedSubmission(uuidParam(input, "submissionId"), tutor);
                 String gradeClause = input.get("grade") != null ? " with grade " + input.get("grade") : "";
+                String feedbackClause = input.get("tutorFeedback") != null
+                        ? " Tutor feedback: \"" + input.get("tutorFeedback") + "\""
+                        : "";
                 yield "Release feedback for " + submission.getStudent().getName()
-                        + "'s submission on \"" + submission.getAssignment().getTitle() + "\"" + gradeClause + ".";
+                        + "'s submission on \"" + submission.getAssignment().getTitle() + "\"" + gradeClause + "."
+                        + feedbackClause;
             }
             case "schedule_session" -> {
                 User student = requireVisibleStudent(uuidParam(input, "studentId"), tutor);
@@ -124,8 +128,7 @@ public class SageToolExecutor {
             case "post_announcement" -> {
                 Course course = requireOwnedCourse(uuidParam(input, "courseId"), tutor);
                 String content = String.valueOf(input.get("content"));
-                String preview = content.length() > 80 ? content.substring(0, 80) + "..." : content;
-                yield "Post an announcement to " + course.getName() + ": \"" + preview + "\"";
+                yield "Post an announcement to " + course.getName() + ": \"" + content + "\"";
             }
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown write tool: " + toolName);
         };

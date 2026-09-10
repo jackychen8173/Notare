@@ -45,9 +45,7 @@ public class SageChatService {
             list/get tool before acting or answering - never guess an ID. When you call a write \
             tool, the system will pause for the tutor's confirmation automatically; you do not \
             need to ask them to confirm in your own text, but you may briefly explain what you're \
-            about to do. Call at most one tool per turn - if you need to look something up before \
-            proposing an action, do the lookup in one turn and wait for its result before \
-            proposing the action in a later turn. Be concise.""";
+            about to do. Be concise.""";
 
     private final AnthropicClient anthropicClient;
     private final ObjectMapper objectMapper;
@@ -77,6 +75,8 @@ public class SageChatService {
         SageConversation conversation = conversationId != null
                 ? requireOwnedConversation(conversationId, tutor)
                 : createConversation(tutor);
+
+        requireNoPendingAction(conversation);
 
         appendMessage(conversation, MessageRole.USER, List.of(new StoredBlock.Text(userText)), null, null);
 
@@ -209,7 +209,30 @@ public class SageChatService {
 
             Map<String, Object> input = call._input().convert(new TypeReference<Map<String, Object>>() {
             });
-            String description = toolExecutor.describeAction(call.name(), input, tutor);
+
+            String description;
+            try {
+                description = toolExecutor.describeAction(call.name(), input, tutor);
+            } catch (ResponseStatusException e) {
+                // Never let a tool-execution error (here, describeAction's ownership/ID
+                // validation) escape the loop - the whole service is class-level @Transactional,
+                // so an uncaught exception here would roll back the entire turn. Persist the
+                // assistant message without a pending action, feed the failure back to the model
+                // as an is_error tool result, and recurse so Sage can try to recover - same
+                // pattern as the read-tool error path below.
+                SageMessage assistantMessage = appendMessage(conversation, MessageRole.ASSISTANT, responseBlocks,
+                        null, null);
+                SageMessage toolMessage = appendMessage(conversation, MessageRole.TOOL,
+                        List.of(new StoredBlock.ToolResult(call.id(), String.valueOf(e.getReason()), true)),
+                        null, null);
+
+                List<SageMessage> produced = new ArrayList<>();
+                produced.add(assistantMessage);
+                produced.add(toolMessage);
+                produced.addAll(runLoop(conversation, tutor, depth + 1));
+                return produced;
+            }
+
             PendingAction pendingAction = new PendingAction(call.name(), call.id(), input, description);
             SageMessage assistantMessage = appendMessage(conversation, MessageRole.ASSISTANT, responseBlocks,
                     ActionStatus.PENDING, pendingAction);
@@ -323,6 +346,18 @@ public class SageChatService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Conversation not found");
         }
         return conversation;
+    }
+
+    private void requireNoPendingAction(SageConversation conversation) {
+        List<SageMessage> history = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
+        if (history.isEmpty()) {
+            return;
+        }
+        SageMessage lastMessage = history.get(history.size() - 1);
+        if (lastMessage.getActionStatus() == ActionStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Resolve the pending action before sending a new message");
+        }
     }
 
     private SageMessage requirePendingMessage(SageConversation conversation, UUID messageId) {
