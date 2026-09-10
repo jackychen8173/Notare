@@ -45,7 +45,9 @@ public class SageChatService {
             list/get tool before acting or answering - never guess an ID. When you call a write \
             tool, the system will pause for the tutor's confirmation automatically; you do not \
             need to ask them to confirm in your own text, but you may briefly explain what you're \
-            about to do. Be concise.""";
+            about to do. Call at most one tool per turn - if you need to look something up before \
+            proposing an action, do the lookup in one turn and wait for its result before \
+            proposing the action in a later turn. Be concise.""";
 
     private final AnthropicClient anthropicClient;
     private final ObjectMapper objectMapper;
@@ -178,21 +180,44 @@ public class SageChatService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Sage is unavailable right now", e);
         }
 
-        List<StoredBlock> responseBlocks = BlockConverter.fromApiResponse(response.content());
+        List<StoredBlock> allResponseBlocks = BlockConverter.fromApiResponse(response.content());
 
         List<ToolUseBlock> toolUses = response.content().stream()
                 .filter(ContentBlock::isToolUse)
                 .map(ContentBlock::asToolUse)
                 .toList();
 
-        Optional<ToolUseBlock> writeCall = toolUses.stream()
-                .filter(t -> SageToolExecutor.WRITE_TOOL_NAMES.contains(t.name()))
-                .findFirst();
+        // This service only ever acts on the first tool_use block in a response. The Anthropic
+        // API requires every tool_use in an assistant turn to have a matching tool_result in the
+        // immediately following turn - if we persisted every tool_use block but only resolved
+        // one, any extra unresolved tool_use would get replayed on the next API call and be
+        // rejected. So we keep at most one ToolUse block (the first) plus all Text blocks, and
+        // drop the rest before persisting. toolUses and the ToolUse blocks in allResponseBlocks
+        // are both derived from response.content() in the same order, so "first" agrees between
+        // them.
+        List<StoredBlock> responseBlocks = new ArrayList<>();
+        boolean toolUseKept = false;
+        for (StoredBlock block : allResponseBlocks) {
+            if (block instanceof StoredBlock.Text) {
+                responseBlocks.add(block);
+            } else if (block instanceof StoredBlock.ToolUse && !toolUseKept) {
+                responseBlocks.add(block);
+                toolUseKept = true;
+            }
+        }
 
-        if (writeCall.isPresent()) {
-            ToolUseBlock call = writeCall.get();
-            Map<String, Object> input = call._input().convert(new TypeReference<Map<String, Object>>() {
-            });
+        Optional<ToolUseBlock> selectedCall = toolUses.stream().findFirst();
+
+        if (selectedCall.isEmpty()) {
+            SageMessage assistantMessage = appendMessage(conversation, MessageRole.ASSISTANT, responseBlocks, null, null);
+            return List.of(assistantMessage);
+        }
+
+        ToolUseBlock call = selectedCall.get();
+        Map<String, Object> input = call._input().convert(new TypeReference<Map<String, Object>>() {
+        });
+
+        if (SageToolExecutor.WRITE_TOOL_NAMES.contains(call.name())) {
             String description = toolExecutor.describeAction(call.name(), input, tutor);
             PendingAction pendingAction = new PendingAction(call.name(), call.id(), input, description);
             SageMessage assistantMessage = appendMessage(conversation, MessageRole.ASSISTANT, responseBlocks,
@@ -202,22 +227,16 @@ public class SageChatService {
 
         SageMessage assistantMessage = appendMessage(conversation, MessageRole.ASSISTANT, responseBlocks, null, null);
 
-        if (toolUses.isEmpty()) {
-            return List.of(assistantMessage);
+        String result;
+        boolean isError = false;
+        try {
+            result = toolExecutor.execute(call.name(), input, tutor);
+        } catch (ResponseStatusException e) {
+            result = String.valueOf(e.getReason());
+            isError = true;
         }
-
-        List<StoredBlock> resultBlocks = new ArrayList<>();
-        for (ToolUseBlock call : toolUses) {
-            Map<String, Object> input = call._input().convert(new TypeReference<Map<String, Object>>() {
-            });
-            try {
-                String result = toolExecutor.execute(call.name(), input, tutor);
-                resultBlocks.add(new StoredBlock.ToolResult(call.id(), result, false));
-            } catch (ResponseStatusException e) {
-                resultBlocks.add(new StoredBlock.ToolResult(call.id(), String.valueOf(e.getReason()), true));
-            }
-        }
-        SageMessage toolMessage = appendMessage(conversation, MessageRole.TOOL, resultBlocks, null, null);
+        SageMessage toolMessage = appendMessage(conversation, MessageRole.TOOL,
+                List.of(new StoredBlock.ToolResult(call.id(), result, isError)), null, null);
 
         List<SageMessage> produced = new ArrayList<>();
         produced.add(assistantMessage);
