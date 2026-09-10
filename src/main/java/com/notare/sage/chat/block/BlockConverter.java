@@ -22,9 +22,17 @@ public final class BlockConverter {
     private BlockConverter() {
     }
 
+    private static final TypeReference<List<StoredBlock>> BLOCK_LIST_TYPE = new TypeReference<>() {
+    };
+
     public static String serialize(List<StoredBlock> blocks, ObjectMapper objectMapper) {
         try {
-            return objectMapper.writeValueAsString(blocks);
+            // Must go through a typed writer (not the raw writeValueAsString(Object) overload):
+            // that overload resolves the serializer from the value's erased runtime type (a plain
+            // ArrayList), so Jackson never sees the static List<StoredBlock> element type and
+            // silently omits the @JsonTypeInfo "type" discriminator each StoredBlock needs to be
+            // deserializable again.
+            return objectMapper.writerFor(BLOCK_LIST_TYPE).writeValueAsString(blocks);
         } catch (JsonProcessingException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to serialize Sage chat message content", e);
@@ -33,8 +41,7 @@ public final class BlockConverter {
 
     public static List<StoredBlock> deserialize(String json, ObjectMapper objectMapper) {
         try {
-            return objectMapper.readValue(json, new TypeReference<List<StoredBlock>>() {
-            });
+            return objectMapper.readValue(json, BLOCK_LIST_TYPE);
         } catch (JsonProcessingException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Failed to deserialize Sage chat message content", e);
