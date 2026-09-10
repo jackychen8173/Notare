@@ -25,9 +25,9 @@ Boot's auto-configuration and component scanning.
 
 ### `AuthController`
 Two public endpoints, both under `/api/auth`, neither requiring a token: `register` (creates a
-new account — this is how a **tutor** account gets created, even though students are normally
-created by their tutor via `POST /api/students` instead) and `login`. Both just delegate to
-`AuthService` and wrap the result in a `201`/`200` `ApiResponse`.
+new account — the *only* way a student or tutor account gets created; there is no
+tutor-creates-student path anymore, see the `student` section below) and `login`. Both just
+delegate to `AuthService` and wrap the result in a `201`/`200` `ApiResponse`.
 
 ### `AuthService`
 - **`register`** — rejects a duplicate email with `409 Conflict`, otherwise hashes the password
@@ -92,41 +92,42 @@ Fields: `id`, `name`, `email` (unique), `password` (bcrypt hash, never returned 
 DTO), `role`, `createdAt` (auto-set on insert via `@PrePersist`).
 
 ### `UserRepository`
-Standard CRUD plus three derived-query methods: `findByEmail` (used everywhere auth needs to
-resolve "who is making this request"), `existsByEmail` (duplicate-registration check), and
-`findByRole` (how `StudentService.listStudents` finds every student regardless of which tutor
-"owns" them — see below, students aren't actually tutor-scoped by the schema itself).
+Standard CRUD plus two derived-query methods: `findByEmail` (used everywhere auth needs to
+resolve "who is making this request") and `existsByEmail` (duplicate-registration check).
+`findByRole` (used to list every `STUDENT` regardless of tutor) was removed along with
+`StudentService.createStudent` and `StudentController`'s unscoped list — see below.
 
 ---
 
 ## `student` — tutor-facing student management
 
+A tutor only ever sees students who are enrolled in one of their own courses — there is no
+"see every student" or "create a student directly" path. A student account is created purely via
+`POST /api/auth/register`; a tutor's only way to gain visibility into one is the join-code flow
+described in the `course` section below — there is no tutor-driven enroll-by-id path either.
+
 ### `StudentController`
-Class-level `@PreAuthorize("hasRole('TUTOR')")` — every endpoint here is tutor-only. `POST` to
-create a student account, `GET` to list all students or fetch one by id, `PUT` to rename/re-email
-one.
+Class-level `@PreAuthorize("hasRole('TUTOR')")`. `GET` to list the calling tutor's visible
+students or fetch one by id, `PUT` to rename/re-email one. No `POST` — tutors can no longer create
+student accounts.
 
 ### `StudentService`
-- **`createStudent`** — same duplicate-email check and password-hashing as `AuthService.register`,
-  but hardcodes `role = STUDENT` regardless of what's in the request (there's no way to create a
-  tutor through this path).
-- **`listStudents`** — returns *every* student in the system, not scoped to "students this tutor
-  has taught." Worth knowing: nothing in the data model actually ties a student to a specific
-  tutor directly — that relationship only exists indirectly, through course enrollments and
-  sessions.
-- **`getStudent`** — 404s if the id doesn't belong to a user with `role = STUDENT` (so a tutor
-  can't fetch another tutor's account through this endpoint by guessing an id).
-- **`updateStudent`** — updates name/email; if the new email collides with a *different* existing
-  account, 409s.
-- **`requireStudent`** (private) — the shared "look up by id and make sure it's actually a
-  student" helper all three read/write methods above funnel through.
+- **`listStudents`** — scoped via `EnrollmentRepository.findDistinctStudentsByCourseTutorId`, so it
+  returns only students currently enrolled in one of the calling tutor's courses.
+- **`getStudent`** / **`updateStudent`** — both funnel through `requireVisibleStudent`, which 404s
+  (not 403) if the id belongs to a real student who simply isn't in any of this tutor's courses —
+  same "don't confirm existence" reasoning used everywhere else in this codebase.
+- **`requireVisibleStudent`** (private) — looks up the user, checks `role == STUDENT`, then checks
+  `EnrollmentRepository.existsByStudentIdAndCourse_Tutor_Id` before returning it.
 
 ---
 
 ## `course` — courses, and the enrollment relationship between students and courses
 
 ### `Course` (entity)
-Fields: `id`, `tutor` (owning `User`), `name`, `subject`, `description`.
+Fields: `id`, `tutor` (owning `User`), `name`, `subject`, `description`, `joinCode` (unique,
+6 characters, generated on create from an alphabet with ambiguous characters like `0`/`O` and
+`1`/`I` removed so codes read back unambiguously when shared aloud).
 
 ### `Enrollment` / `EnrollmentId` (entity + composite key)
 The join between a student and a course. Deliberately uses a composite primary key
@@ -137,39 +138,59 @@ enrollment rows for the same course.
 
 ### `CourseController`
 Class-level tutor-only. Create a course, list the calling tutor's own courses, fetch one by id,
-enroll a student into one, list who's enrolled.
+list who's enrolled, regenerate a course's join code, remove a student from a course. There is no
+tutor-driven enroll-by-id endpoint — join-by-code (below) is the only way a student gets enrolled.
 
 ### `CourseService`
 This class does double duty — it backs both the tutor-facing `CourseController` and the
 student-facing `StudentCourseController` below, which is why it has two parallel sets of methods
 (`list/getCourse` for tutors vs. `list/getEnrolledCourse` for students).
-- **`createCourse`** — attaches the course to whichever tutor's email is on the request.
+- **`createCourse`** — attaches the course to whichever tutor's email is on the request, and
+  generates a unique join code via `generateUniqueJoinCode` (retried up to 10 times against
+  `CourseRepository.existsByJoinCode`, though a collision in a 32-character, 6-slot code space is
+  effectively never going to happen).
 - **`listCourses`** / **`getCourse`** — tutor-scoped; `getCourse` funnels through
-  `requireOwnedCourse`, so fetching another tutor's course id 404s.
-- **`enrollStudent`** — verifies the course belongs to the calling tutor, the target user exists
-  and is actually a student, and that they aren't already enrolled (409 if so), before inserting
-  the `Enrollment` row.
+  `requireOwnedCourse`, so fetching another tutor's course id 404s. Both return `CourseResponse`
+  via `from()`, which includes the join code — only the owning tutor ever sees it.
+- **`regenerateJoinCode`** — tutor-ownership-checked like everything else, replaces the course's
+  code with a freshly generated one (invalidating the old one immediately, since lookup is by
+  exact code match).
+- **`joinCourseByCode`** — the only enrollment path: looks up the course by code (case-insensitive,
+  trimmed), 404s with "Invalid join code" if no course matches, 409s if the student is already
+  enrolled, otherwise inserts the `Enrollment` row. This is the only enrollment path that doesn't
+  go through tutor-ownership checks, since matching a shared code isn't an authorization bypass —
+  it's the intended mechanism.
+- **`removeStudent`** — tutor-ownership-checked, 404s if the student isn't currently enrolled,
+  otherwise deletes the `Enrollment` row via `EnrollmentRepository.deleteByStudentIdAndCourseId`.
+  Deliberately touches nothing else — sessions and submissions reference `student_id`/`course_id`
+  directly, not through `enrollments`, so a student's prior work for that course survives removal
+  (same behavior Google Classroom has).
 - **`listEnrolledCourses`** / **`getEnrolledCourse`** — the student-facing equivalents, scoped by
-  the enrollment table rather than by ownership. `getEnrolledCourse` 404s (not 403) if the course
-  exists but the calling student isn't enrolled in it, same "don't confirm existence" reasoning as
-  the tutor-ownership checks.
+  the enrollment table rather than by ownership, and returned via `CourseResponse.forStudent()`
+  (join code nulled out — students don't need it once enrolled). `getEnrolledCourse` 404s (not
+  403) if the course exists but the calling student isn't enrolled in it, same "don't confirm
+  existence" reasoning as the tutor-ownership checks.
 - **`listEnrolledStudents`** — the roster for a course, tutor-only, tutor-ownership-checked first.
 - **`requireOwnedCourse`** / **`requireEnrolledCourse`** (private) — the two shared gate-keeping
   helpers everything above funnels through.
 
 ### `StudentCourseController`
-Class-level `@PreAuthorize("hasRole('STUDENT')")`, under `/api/student/courses`. Two read-only
-endpoints (list my enrolled courses, get one of them by id) — both self-scoped from the JWT, with
-no `studentId` parameter anywhere in the request. This whole controller (and its three siblings
-under `assignment`/`session`/`submission`) didn't exist until very late in the project; see
-`CLAUDE.md`'s "Project spec" section for why the student-facing read API was deferred three times
-before finally being built.
+Class-level `@PreAuthorize("hasRole('STUDENT')")`, under `/api/student/courses`. List my enrolled
+courses, get one of them by id, and `POST /join` (body `{ code }`) to self-enroll via a course's
+join code — all self-scoped from the JWT, with no `studentId` parameter anywhere in the request.
+This whole controller (and its three siblings under `assignment`/`session`/`submission`) didn't
+exist until very late in the project; see `CLAUDE.md`'s "Project spec" section for why the
+student-facing read API was deferred three times before finally being built.
 
 ### `CourseRepository` / `EnrollmentRepository`
-`CourseRepository` adds one derived query, `findByTutorId`. `EnrollmentRepository` adds
-`findByCourseId`, `findByStudentId`, and `existsByStudentIdAndCourseId` — that last one is the
-single most-reused method in the whole backend; it's the actual mechanism behind every
-"is this student enrolled" check across courses, assignments, and submissions.
+`CourseRepository` adds `findByTutorId`, `findByJoinCode`, and `existsByJoinCode` (the last one
+backing the collision check in `generateUniqueJoinCode`). `EnrollmentRepository` adds
+`findByCourseId`, `findByStudentId`, `existsByStudentIdAndCourseId` (the single most-reused method
+in the whole backend — the actual mechanism behind every "is this student enrolled" check across
+courses, assignments, and submissions), `deleteByStudentIdAndCourseId` (backs `removeStudent`),
+`existsByStudentIdAndCourse_Tutor_Id` (backs student visibility in `StudentService`), and
+`findDistinctStudentsByCourseTutorId` (a `@Query` joining through `course.tutor.id`, backing
+`StudentService.listStudents`).
 
 ---
 

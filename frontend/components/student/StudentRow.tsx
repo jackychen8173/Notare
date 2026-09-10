@@ -1,14 +1,17 @@
 import Link from "next/link";
 
 import { StudentAvatar } from "@/components/student/StudentAvatar";
+import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import type { Student } from "@/types/user";
 
 interface StudentRowProps {
   student: Student;
+  onRemove?: () => void;
+  removePending?: boolean;
 }
 
-export function StudentRow({ student }: StudentRowProps) {
+export function StudentRow({ student, onRemove, removePending }: StudentRowProps) {
   return (
     <TableRow>
       <TableCell>
@@ -21,6 +24,13 @@ export function StudentRow({ student }: StudentRowProps) {
       <TableCell className="text-muted-foreground">
         {new Date(student.createdAt).toLocaleDateString()}
       </TableCell>
+      {onRemove ? (
+        <TableCell>
+          <Button variant="ghost" size="sm" disabled={removePending} onClick={onRemove}>
+            Remove
+          </Button>
+        </TableCell>
+      ) : null}
     </TableRow>
   );
 }

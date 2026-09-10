@@ -1,8 +1,8 @@
 "use client";
 
-import { use, useMemo, useState } from "react";
+import { use, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { AssignmentCard } from "@/components/assignment/AssignmentCard";
@@ -19,103 +19,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useCreateAssignment, useCourseAssignments } from "@/hooks/useAssignments";
-import { useCourse, useEnrolledStudents, useEnrollStudent } from "@/hooks/useCourses";
-import { useStudents } from "@/hooks/useStudents";
-
-const enrollSchema = z.object({
-  studentId: z.string().min(1, "Choose a student"),
-});
-
-type EnrollValues = z.infer<typeof enrollSchema>;
-
-function EnrollStudentDialog({ courseId }: { courseId: string }) {
-  const [open, setOpen] = useState(false);
-  const students = useStudents();
-  const enrolled = useEnrolledStudents(courseId);
-  const enrollStudent = useEnrollStudent(courseId);
-  const {
-    handleSubmit,
-    reset,
-    control,
-    formState: { errors },
-  } = useForm<EnrollValues>({
-    resolver: zodResolver(enrollSchema),
-    defaultValues: { studentId: "" },
-  });
-
-  const enrolledIds = useMemo(() => new Set((enrolled.data ?? []).map((s) => s.id)), [enrolled.data]);
-  const available = (students.data ?? []).filter((s) => !enrolledIds.has(s.id));
-
-  function onSubmit(values: EnrollValues) {
-    enrollStudent.mutate(values.studentId, {
-      onSuccess: () => {
-        reset();
-        setOpen(false);
-      },
-    });
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (!nextOpen) reset();
-      }}
-    >
-      <DialogTrigger render={<Button variant="outline">Enroll student</Button>} />
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Enroll student</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="student">Student</Label>
-            <Controller
-              control={control}
-              name="studentId"
-              render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger id="student" className="w-full">
-                    <SelectValue placeholder="Choose a student">
-                      {(value: string | null) => available.find((s) => s.id === value)?.name}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {available.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            {errors.studentId ? (
-              <p className="text-xs text-destructive">{errors.studentId.message}</p>
-            ) : null}
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={enrollStudent.isPending}>
-              {enrollStudent.isPending ? "Enrolling..." : "Enroll"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+import { useCourse, useEnrolledStudents, useRegenerateJoinCode, useRemoveStudent } from "@/hooks/useCourses";
 
 const createAssignmentSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -187,11 +95,35 @@ function NewAssignmentDialog({ courseId }: { courseId: string }) {
   );
 }
 
+function JoinCodeCard({ courseId, joinCode }: { courseId: string; joinCode: string | null }) {
+  const regenerate = useRegenerateJoinCode(courseId);
+
+  return (
+    <Card>
+      <CardContent className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-xs text-muted-foreground">Join code</p>
+          <p className="font-mono text-lg tracking-widest text-foreground">{joinCode}</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={regenerate.isPending}
+          onClick={() => regenerate.mutate()}
+        >
+          {regenerate.isPending ? "Regenerating..." : "Regenerate"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const course = useCourse(id);
   const enrolled = useEnrolledStudents(id);
   const assignments = useCourseAssignments(id);
+  const removeStudent = useRemoveStudent(id);
 
   if (course.isLoading) {
     return (
@@ -208,19 +140,19 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-medium text-foreground">{course.data.name}</h1>
-        <p className="text-sm text-muted-foreground">{course.data.subject}</p>
-        {course.data.description ? (
-          <p className="mt-2 text-sm text-muted-foreground">{course.data.description}</p>
-        ) : null}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-medium text-foreground">{course.data.name}</h1>
+          <p className="text-sm text-muted-foreground">{course.data.subject}</p>
+          {course.data.description ? (
+            <p className="mt-2 text-sm text-muted-foreground">{course.data.description}</p>
+          ) : null}
+        </div>
+        <JoinCodeCard courseId={id} joinCode={course.data.joinCode} />
       </div>
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-foreground">Enrolled students</h2>
-          <EnrollStudentDialog courseId={id} />
-        </div>
+        <h2 className="mb-3 text-lg font-medium text-foreground">Enrolled students</h2>
         {enrolled.isLoading ? (
           <Skeleton className="h-16 w-full" />
         ) : enrolled.data && enrolled.data.length > 0 ? (
@@ -230,11 +162,17 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Added</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {enrolled.data.map((student) => (
-                <StudentRow key={student.id} student={student} />
+                <StudentRow
+                  key={student.id}
+                  student={student}
+                  onRemove={() => removeStudent.mutate(student.id)}
+                  removePending={removeStudent.isPending && removeStudent.variables === student.id}
+                />
               ))}
             </TableBody>
           </Table>

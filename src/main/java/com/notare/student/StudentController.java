@@ -1,16 +1,14 @@
 package com.notare.student;
 
 import com.notare.common.ApiResponse;
-import com.notare.student.dto.CreateStudentRequest;
 import com.notare.student.dto.StudentResponse;
 import com.notare.student.dto.UpdateStudentRequest;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,27 +28,22 @@ public class StudentController {
         this.studentService = studentService;
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<StudentResponse>> createStudent(@Valid @RequestBody CreateStudentRequest request) {
-        StudentResponse response = studentService.createStudent(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
-    }
-
     @GetMapping
-    public ResponseEntity<ApiResponse<List<StudentResponse>>> listStudents() {
-        return ResponseEntity.ok(ApiResponse.success(studentService.listStudents()));
+    public ResponseEntity<ApiResponse<List<StudentResponse>>> listStudents(Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(studentService.listStudents(authentication.getName())));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<StudentResponse>> getStudent(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.success(studentService.getStudent(id)));
+    public ResponseEntity<ApiResponse<StudentResponse>> getStudent(@PathVariable UUID id, Authentication authentication) {
+        return ResponseEntity.ok(ApiResponse.success(studentService.getStudent(id, authentication.getName())));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<StudentResponse>> updateStudent(
             @PathVariable UUID id,
-            @Valid @RequestBody UpdateStudentRequest request
+            @Valid @RequestBody UpdateStudentRequest request,
+            Authentication authentication
     ) {
-        return ResponseEntity.ok(ApiResponse.success(studentService.updateStudent(id, request)));
+        return ResponseEntity.ok(ApiResponse.success(studentService.updateStudent(id, request, authentication.getName())));
     }
 }

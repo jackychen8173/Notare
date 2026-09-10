@@ -2,7 +2,6 @@ package com.notare.course;
 
 import com.notare.course.dto.CourseResponse;
 import com.notare.course.dto.CreateCourseRequest;
-import com.notare.course.dto.EnrollStudentRequest;
 import com.notare.student.dto.StudentResponse;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
@@ -12,12 +11,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class CourseService {
+
+    // Excludes 0/O and 1/I so codes read back unambiguously when shared out loud or handwritten.
+    private static final String JOIN_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private static final int JOIN_CODE_LENGTH = 6;
+    private static final int MAX_JOIN_CODE_ATTEMPTS = 10;
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -41,11 +47,60 @@ public class CourseService {
                 .name(request.name())
                 .subject(request.subject())
                 .description(request.description())
+                .joinCode(generateUniqueJoinCode())
                 .build();
 
         courseRepository.save(course);
 
         return CourseResponse.from(course);
+    }
+
+    public CourseResponse regenerateJoinCode(UUID courseId, String tutorEmail) {
+        Course course = requireOwnedCourse(courseId, tutorEmail);
+        course.setJoinCode(generateUniqueJoinCode());
+        courseRepository.save(course);
+        return CourseResponse.from(course);
+    }
+
+    public void joinCourseByCode(String code, String studentEmail) {
+        User student = requireStudentUser(studentEmail);
+        Course course = courseRepository.findByJoinCode(code.trim().toUpperCase())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid join code"));
+
+        if (enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), course.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Already enrolled in this course");
+        }
+
+        Enrollment enrollment = Enrollment.builder()
+                .id(new EnrollmentId(student.getId(), course.getId()))
+                .student(student)
+                .course(course)
+                .build();
+
+        enrollmentRepository.save(enrollment);
+    }
+
+    public void removeStudent(UUID courseId, UUID studentId, String tutorEmail) {
+        Course course = requireOwnedCourse(courseId, tutorEmail);
+
+        if (!enrollmentRepository.existsByStudentIdAndCourseId(studentId, course.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found in this course");
+        }
+
+        enrollmentRepository.deleteByStudentIdAndCourseId(studentId, course.getId());
+    }
+
+    private String generateUniqueJoinCode() {
+        for (int attempt = 0; attempt < MAX_JOIN_CODE_ATTEMPTS; attempt++) {
+            StringBuilder code = new StringBuilder(JOIN_CODE_LENGTH);
+            for (int i = 0; i < JOIN_CODE_LENGTH; i++) {
+                code.append(JOIN_CODE_ALPHABET.charAt(RANDOM.nextInt(JOIN_CODE_ALPHABET.length())));
+            }
+            if (!courseRepository.existsByJoinCode(code.toString())) {
+                return code.toString();
+            }
+        }
+        throw new IllegalStateException("Could not generate a unique join code");
     }
 
     @Transactional(readOnly = true)
@@ -61,38 +116,18 @@ public class CourseService {
         return CourseResponse.from(requireOwnedCourse(courseId, tutorEmail));
     }
 
-    public void enrollStudent(UUID courseId, EnrollStudentRequest request, String tutorEmail) {
-        Course course = requireOwnedCourse(courseId, tutorEmail);
-
-        User student = userRepository.findById(request.studentId())
-                .filter(user -> user.getRole() == UserRole.STUDENT)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Student not found"));
-
-        if (enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), course.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Student is already enrolled in this course");
-        }
-
-        Enrollment enrollment = Enrollment.builder()
-                .id(new EnrollmentId(student.getId(), course.getId()))
-                .student(student)
-                .course(course)
-                .build();
-
-        enrollmentRepository.save(enrollment);
-    }
-
     @Transactional(readOnly = true)
     public List<CourseResponse> listEnrolledCourses(String studentEmail) {
         User student = requireStudentUser(studentEmail);
         return enrollmentRepository.findByStudentId(student.getId()).stream()
                 .map(Enrollment::getCourse)
-                .map(CourseResponse::from)
+                .map(CourseResponse::forStudent)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public CourseResponse getEnrolledCourse(UUID courseId, String studentEmail) {
-        return CourseResponse.from(requireEnrolledCourse(courseId, studentEmail));
+        return CourseResponse.forStudent(requireEnrolledCourse(courseId, studentEmail));
     }
 
     @Transactional(readOnly = true)

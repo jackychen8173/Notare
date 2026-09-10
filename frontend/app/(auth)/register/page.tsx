@@ -30,7 +30,7 @@ const registerSchema = z
     email: z.string().email("Enter a valid email address"),
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string().min(1, "Confirm your password"),
-    role: z.enum(["TUTOR", "STUDENT"]),
+    role: z.enum(["TUTOR", "STUDENT"], { required_error: "Choose a role" }),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -50,7 +50,6 @@ export default function RegisterPage() {
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { role: "TUTOR" },
   });
 
   async function onSubmit(values: RegisterFormValues) {
@@ -145,7 +144,7 @@ export default function RegisterPage() {
                 control={control}
                 name="role"
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select value={field.value ?? ""} onValueChange={field.onChange}>
                     <SelectTrigger id="role" className="w-full">
                       <SelectValue placeholder="Choose a role" />
                     </SelectTrigger>
