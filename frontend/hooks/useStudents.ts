@@ -32,25 +32,6 @@ export function useStudent(id: string) {
   });
 }
 
-export interface CreateStudentInput {
-  name: string;
-  email: string;
-  password: string;
-}
-
-export function useCreateStudent() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: CreateStudentInput) => {
-      const res = await api.post<ApiEnvelope<Student>>("/api/students", input);
-      return res.data.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: studentKeys.all });
-    },
-  });
-}
-
 export interface UpdateStudentInput {
   id: string;
   name: string;

@@ -86,14 +86,39 @@ export function useCreateCourse() {
   });
 }
 
-export function useEnrollStudent(courseId: string) {
+export function useRemoveStudent(courseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (studentId: string) => {
-      await api.post(`/api/courses/${courseId}/enroll`, { studentId });
+      await api.delete(`/api/courses/${courseId}/students/${studentId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: courseKeys.students(courseId) });
+    },
+  });
+}
+
+export function useRegenerateJoinCode(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post<ApiEnvelope<Course>>(`/api/courses/${courseId}/join-code/regenerate`);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+    },
+  });
+}
+
+export function useJoinCourse() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (code: string) => {
+      await api.post("/api/student/courses/join", { code });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.mine });
     },
   });
 }

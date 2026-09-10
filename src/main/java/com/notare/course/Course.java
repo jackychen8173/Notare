@@ -41,4 +41,7 @@ public class Course {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "join_code", nullable = false, unique = true, length = 8)
+    private String joinCode;
 }

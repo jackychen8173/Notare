@@ -5,4 +5,5 @@ export interface Course {
   name: string;
   subject: string;
   description: string | null;
+  joinCode: string | null;
 }
