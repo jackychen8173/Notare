@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -44,4 +45,7 @@ public class Course {
 
     @Column(name = "join_code", nullable = false, unique = true, length = 8)
     private String joinCode;
+
+    @Column(name = "archived_at")
+    private LocalDateTime archivedAt;
 }

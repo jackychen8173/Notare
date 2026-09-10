@@ -3,6 +3,8 @@
 import { use } from "react";
 
 import { AssignmentCard } from "@/components/assignment/AssignmentCard";
+import { StudentAnnouncementsSection } from "@/components/course/AnnouncementsSection";
+import { StudentMaterialsSection } from "@/components/course/MaterialsSection";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyCourseAssignments } from "@/hooks/useAssignments";
@@ -58,6 +60,10 @@ export default function StudentCourseDetailPage({ params }: { params: Promise<{ 
           </Card>
         )}
       </div>
+
+      <StudentMaterialsSection courseId={id} />
+
+      <StudentAnnouncementsSection courseId={id} />
     </div>
   );
 }

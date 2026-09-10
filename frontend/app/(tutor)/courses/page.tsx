@@ -92,7 +92,8 @@ function NewCourseDialog() {
 }
 
 export default function CoursesPage() {
-  const courses = useCourses();
+  const [archived, setArchived] = useState(false);
+  const courses = useCourses(archived);
 
   return (
     <>
@@ -101,6 +102,15 @@ export default function CoursesPage() {
         description="Courses you teach and their enrolled students."
         actions={<NewCourseDialog />}
       />
+
+      <div className="flex gap-2">
+        <Button variant={archived ? "outline" : "default"} size="sm" onClick={() => setArchived(false)}>
+          Active
+        </Button>
+        <Button variant={archived ? "default" : "outline"} size="sm" onClick={() => setArchived(true)}>
+          Archived
+        </Button>
+      </div>
 
       {courses.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -122,7 +132,9 @@ export default function CoursesPage() {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">No courses yet.</p>
+        <p className="text-sm text-muted-foreground">
+          {archived ? "No archived courses." : "No courses yet."}
+        </p>
       )}
     </>
   );

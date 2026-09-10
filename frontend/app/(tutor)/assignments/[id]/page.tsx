@@ -3,6 +3,7 @@
 import { use } from "react";
 import Link from "next/link";
 
+import { RubricPanel } from "@/components/rubric/RubricPanel";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -90,6 +91,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
           </Card>
         )}
       </div>
+
+      <RubricPanel assignmentId={id} />
     </div>
   );
 }

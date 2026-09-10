@@ -8,14 +8,15 @@ import type { Student } from "@/types/user";
 
 export const courseKeys = {
   all: ["courses"] as const,
+  list: (archived: boolean) => ["courses", "list", archived] as const,
   detail: (id: string) => ["courses", id] as const,
   students: (id: string) => ["courses", id, "students"] as const,
   mine: ["student", "courses"] as const,
   mineDetail: (id: string) => ["student", "courses", id] as const,
 };
 
-async function fetchCourses(): Promise<Course[]> {
-  const res = await api.get<ApiEnvelope<Course[]>>("/api/courses");
+async function fetchCourses(archived: boolean): Promise<Course[]> {
+  const res = await api.get<ApiEnvelope<Course[]>>("/api/courses", { params: { archived } });
   return res.data.data;
 }
 
@@ -39,8 +40,8 @@ async function fetchMyCourse(id: string): Promise<Course> {
   return res.data.data;
 }
 
-export function useCourses() {
-  return useQuery({ queryKey: courseKeys.all, queryFn: fetchCourses });
+export function useCourses(archived = false) {
+  return useQuery({ queryKey: courseKeys.list(archived), queryFn: () => fetchCourses(archived) });
 }
 
 export function useCourse(id: string) {
@@ -107,6 +108,54 @@ export function useRegenerateJoinCode(courseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+    },
+  });
+}
+
+export interface UpdateCourseInput {
+  name: string;
+  subject: string;
+  description?: string;
+}
+
+export function useUpdateCourse(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateCourseInput) => {
+      const res = await api.patch<ApiEnvelope<Course>>(`/api/courses/${courseId}`, input);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      queryClient.invalidateQueries({ queryKey: courseKeys.all });
+    },
+  });
+}
+
+export function useArchiveCourse(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post<ApiEnvelope<Course>>(`/api/courses/${courseId}/archive`);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      queryClient.invalidateQueries({ queryKey: courseKeys.all });
+    },
+  });
+}
+
+export function useUnarchiveCourse(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await api.post<ApiEnvelope<Course>>(`/api/courses/${courseId}/unarchive`);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.detail(courseId) });
+      queryClient.invalidateQueries({ queryKey: courseKeys.all });
     },
   });
 }

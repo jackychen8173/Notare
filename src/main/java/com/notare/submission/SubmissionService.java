@@ -3,9 +3,15 @@ package com.notare.submission;
 import com.notare.assignment.Assignment;
 import com.notare.assignment.AssignmentRepository;
 import com.notare.course.EnrollmentRepository;
+import com.notare.rubric.Rubric;
+import com.notare.rubric.RubricCriterion;
+import com.notare.rubric.RubricCriterionRepository;
+import com.notare.rubric.RubricRepository;
 import com.notare.submission.dto.ReleaseFeedbackRequest;
+import com.notare.submission.dto.RubricScoreItem;
 import com.notare.submission.dto.SubmissionResponse;
 import com.notare.submission.dto.SubmitAssignmentRequest;
+import com.notare.submission.dto.UpdateRubricScoresRequest;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
 import com.notare.user.UserRole;
@@ -16,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -26,17 +33,26 @@ public class SubmissionService {
     private final AssignmentRepository assignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
+    private final RubricRepository rubricRepository;
+    private final RubricCriterionRepository rubricCriterionRepository;
+    private final SubmissionCriterionScoreRepository criterionScoreRepository;
 
     public SubmissionService(
             SubmissionRepository submissionRepository,
             AssignmentRepository assignmentRepository,
             EnrollmentRepository enrollmentRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            RubricRepository rubricRepository,
+            RubricCriterionRepository rubricCriterionRepository,
+            SubmissionCriterionScoreRepository criterionScoreRepository
     ) {
         this.submissionRepository = submissionRepository;
         this.assignmentRepository = assignmentRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
+        this.rubricRepository = rubricRepository;
+        this.rubricCriterionRepository = rubricCriterionRepository;
+        this.criterionScoreRepository = criterionScoreRepository;
     }
 
     public SubmissionResponse submitAssignment(UUID assignmentId, SubmitAssignmentRequest request, String studentEmail) {
@@ -60,7 +76,7 @@ public class SubmissionService {
 
         submissionRepository.save(submission);
 
-        return SubmissionResponse.from(submission);
+        return SubmissionResponse.from(submission, List.of());
     }
 
     @Transactional(readOnly = true)
@@ -78,20 +94,21 @@ public class SubmissionService {
 
         return submissionRepository
                 .findFirstByStudentIdAndAssignmentIdOrderBySubmittedAtDesc(student.getId(), assignmentId)
-                .map(SubmissionResponse::forStudent)
+                .map(submission -> SubmissionResponse.forStudent(submission, loadRubricScores(submission.getId())))
                 .orElse(null);
     }
 
     @Transactional(readOnly = true)
     public SubmissionResponse getSubmission(UUID submissionId, String tutorEmail) {
-        return SubmissionResponse.from(requireOwnedSubmission(submissionId, tutorEmail));
+        Submission submission = requireOwnedSubmission(submissionId, tutorEmail);
+        return SubmissionResponse.from(submission, loadRubricScores(submission.getId()));
     }
 
     @Transactional(readOnly = true)
     public List<SubmissionResponse> listSubmissionsForAssignment(UUID assignmentId, String tutorEmail) {
         Assignment assignment = requireOwnedAssignment(assignmentId, tutorEmail);
         return submissionRepository.findByAssignmentId(assignment.getId()).stream()
-                .map(SubmissionResponse::from)
+                .map(submission -> SubmissionResponse.from(submission, loadRubricScores(submission.getId())))
                 .toList();
     }
 
@@ -114,7 +131,48 @@ public class SubmissionService {
 
         submissionRepository.save(submission);
 
-        return SubmissionResponse.from(submission);
+        return SubmissionResponse.from(submission, loadRubricScores(submission.getId()));
+    }
+
+    public SubmissionResponse updateRubricScores(UUID submissionId, UpdateRubricScoresRequest request, String tutorEmail) {
+        Submission submission = requireOwnedSubmission(submissionId, tutorEmail);
+
+        Rubric rubric = rubricRepository.findByAssignmentId(submission.getAssignment().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "This assignment has no rubric"));
+
+        Map<UUID, RubricCriterion> criteriaById = rubricCriterionRepository
+                .findByRubricIdOrderByPositionAsc(rubric.getId()).stream()
+                .collect(java.util.stream.Collectors.toMap(RubricCriterion::getId, c -> c));
+
+        criterionScoreRepository.deleteBySubmissionId(submission.getId());
+
+        for (UpdateRubricScoresRequest.ScoreInput input : request.scores()) {
+            RubricCriterion criterion = criteriaById.get(input.criterionId());
+            if (criterion == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Criterion not found on this assignment's rubric");
+            }
+
+            SubmissionCriterionScore score = SubmissionCriterionScore.builder()
+                    .submission(submission)
+                    .criterion(criterion)
+                    .pointsAwarded(input.pointsAwarded())
+                    .build();
+            criterionScoreRepository.save(score);
+        }
+
+        return SubmissionResponse.from(submission, loadRubricScores(submission.getId()));
+    }
+
+    private List<RubricScoreItem> loadRubricScores(UUID submissionId) {
+        return criterionScoreRepository.findBySubmissionId(submissionId).stream()
+                .map(score -> new RubricScoreItem(
+                        score.getCriterion().getId(),
+                        score.getCriterion().getName(),
+                        score.getPointsAwarded(),
+                        score.getCriterion().getPointsPossible()
+                ))
+                .toList();
     }
 
     private User requireStudent(String email) {

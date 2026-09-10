@@ -3,6 +3,7 @@
 import { use } from "react";
 
 import { SubmissionForm } from "@/components/assignment/SubmissionForm";
+import { RubricView } from "@/components/rubric/RubricView";
 import { SageFeedbackBlock } from "@/components/sage/SageFeedbackBlock";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +53,8 @@ export default function StudentAssignmentDetailPage({
         ) : null}
       </div>
 
+      <RubricView assignmentId={id} />
+
       {submission.isLoading ? (
         <Skeleton className="h-32 w-full" />
       ) : submission.data ? (
@@ -89,6 +92,23 @@ export default function StudentAssignmentDetailPage({
                 <p className="text-sm text-foreground">
                   <span className="font-medium">Grade:</span> {submission.data.grade}
                 </p>
+              ) : null}
+              {submission.data.rubricScores.length > 0 ? (
+                <Card>
+                  <CardContent className="flex flex-col gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Rubric score: {submission.data.rubricTotalAwarded} / {submission.data.rubricTotalPossible}
+                    </p>
+                    {submission.data.rubricScores.map((score) => (
+                      <div key={score.criterionId} className="flex items-center justify-between text-sm">
+                        <span className="text-foreground">{score.criterionName}</span>
+                        <span className="text-muted-foreground">
+                          {score.pointsAwarded} / {score.pointsPossible}
+                        </span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
               ) : null}
             </>
           ) : (
