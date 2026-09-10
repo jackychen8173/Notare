@@ -1,6 +1,6 @@
 "use client";
 
-import { IconBook2, IconLayoutDashboard, IconUsers } from "@tabler/icons-react";
+import { IconBook2, IconLayoutDashboard, IconMessageChatbot, IconUsers } from "@tabler/icons-react";
 
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopNav } from "@/components/layout/TopNav";
@@ -10,6 +10,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
   { href: "/students", label: "Students", icon: IconUsers },
   { href: "/courses", label: "Courses", icon: IconBook2 },
+  { href: "/sage", label: "Ask Sage", icon: IconMessageChatbot },
 ];
 
 export default function TutorLayout({ children }: { children: React.ReactNode }) {
