@@ -145,6 +145,11 @@ public class SubmissionService {
                 .collect(java.util.stream.Collectors.toMap(RubricCriterion::getId, c -> c));
 
         criterionScoreRepository.deleteBySubmissionId(submission.getId());
+        // Force the delete to hit the DB before the inserts below are flushed. Hibernate's default
+        // flush order runs entity insertions before entity deletions regardless of code order, so
+        // without this, re-scoring a submission that already has rows for the same
+        // (submission_id, criterion_id) pair violates the unique constraint on that pair.
+        criterionScoreRepository.flush();
 
         for (UpdateRubricScoresRequest.ScoreInput input : request.scores()) {
             RubricCriterion criterion = criteriaById.get(input.criterionId());
