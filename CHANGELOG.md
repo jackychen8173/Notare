@@ -2,6 +2,12 @@
 
 Notable changes to this project, most recent first. See `CLAUDE.md` for when to add an entry.
 
+## 2026-09-11 (3)
+
+- Recorded, but deliberately did not fix, a transaction-boundary risk the final whole-branch review of the Sage tool expansion found: every one of Sage's 19 new tools (8 read + 11 new write, on top of the original 14) now delegates into a service method annotated class-level `@Transactional`, joining `SageChatService`'s own class-level `@Transactional` transaction as a participant. Spring's default `globalRollbackOnParticipationFailure` means an inner `ResponseStatusException` (e.g. `get_rubric` on an assignment with no rubric, `create_assignment` into an archived course, `update_rubric_scores` with a criterion from the wrong rubric — all ordinary, expected failure modes a tutor or the model will hit routinely) can mark the whole shared transaction rollback-only, so the loop's catch-and-continue (meant to turn this into a graceful `is_error` tool result) may instead surface as an `UnexpectedRollbackException` 500, losing the entire chat turn. Before this expansion, only 6 of 18 tools went through a `@Transactional` delegate; now all 33 do, so this pre-existing risk is far more reachable than before.
+  - Not fixed now because it can't be verified without a live model turn through `POST /api/sage/chat` (needs a real `ANTHROPIC_API_KEY`, not available in this environment), and the reviewer's own recommendation was to write it down rather than guess at a fix blind. The likely correct fix, if confirmed: run tool execution in its own transaction (`@Transactional(propagation = REQUIRES_NEW)` on `SageToolExecutor.execute`/`describeAction`) so an inner failure rolls back only the tool's own work, not the whole turn.
+  - See the "State a new session should know" note in `CLAUDE.md` for the check to run once a real API key is available.
+
 ## 2026-09-11 (2)
 
 - Applied fixes from a final whole-branch code review of the Sage chat tool expansion (see the entry below for the feature itself). Fixed 6 of the review's findings; deferred the rest (a transaction-boundary concern and several other Minor items) per the review's own triage.
