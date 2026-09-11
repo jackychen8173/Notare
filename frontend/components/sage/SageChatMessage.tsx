@@ -26,7 +26,7 @@ export function SageChatMessage({ message, onConfirm, onDecline, confirmPending,
         {message.pendingAction ? (
           <Card className="mt-2">
             <CardContent className="flex flex-col gap-2">
-              <p className="text-sm text-foreground">{message.pendingAction.description}</p>
+              <p className="whitespace-pre-wrap text-sm text-foreground">{message.pendingAction.description}</p>
               {message.pendingAction.actionStatus === "PENDING" ? (
                 <div className="flex gap-2">
                   <Button size="sm" disabled={confirmPending} onClick={onConfirm}>

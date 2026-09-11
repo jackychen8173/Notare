@@ -22,8 +22,10 @@ import com.notare.gradecategory.dto.UpdateGradeCategoryRequest;
 import com.notare.material.MaterialService;
 import com.notare.material.dto.CreateMaterialRequest;
 import com.notare.material.dto.MaterialResponse;
+import com.notare.rubric.Rubric;
 import com.notare.rubric.RubricCriterion;
 import com.notare.rubric.RubricCriterionRepository;
+import com.notare.rubric.RubricRepository;
 import com.notare.rubric.RubricService;
 import com.notare.rubric.dto.RubricResponse;
 import com.notare.sage.SageService;
@@ -97,6 +99,7 @@ public class SageToolExecutor {
     private final TopicRepository topicRepository;
     private final GradeCategoryRepository gradeCategoryRepository;
     private final RubricCriterionRepository rubricCriterionRepository;
+    private final RubricRepository rubricRepository;
 
     public SageToolExecutor(
             CourseRepository courseRepository,
@@ -118,7 +121,8 @@ public class SageToolExecutor {
             AssignmentService assignmentService,
             TopicRepository topicRepository,
             GradeCategoryRepository gradeCategoryRepository,
-            RubricCriterionRepository rubricCriterionRepository
+            RubricCriterionRepository rubricCriterionRepository,
+            RubricRepository rubricRepository
     ) {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -140,6 +144,7 @@ public class SageToolExecutor {
         this.topicRepository = topicRepository;
         this.gradeCategoryRepository = gradeCategoryRepository;
         this.rubricCriterionRepository = rubricCriterionRepository;
+        this.rubricRepository = rubricRepository;
     }
 
     public String execute(String toolName, Map<String, Object> input, User tutor) {
@@ -211,9 +216,14 @@ public class SageToolExecutor {
             }
             case "update_course" -> {
                 Course course = requireOwnedCourse(uuidParam(input, "courseId"), tutor);
-                String descriptionClause = input.get("description") != null
-                        ? " Description: \"" + input.get("description") + "\""
-                        : "";
+                String descriptionClause;
+                if (input.get("description") != null) {
+                    descriptionClause = " Description: \"" + input.get("description") + "\"";
+                } else if (course.getDescription() != null) {
+                    descriptionClause = " This clears the existing description: \"" + course.getDescription() + "\".";
+                } else {
+                    descriptionClause = "";
+                }
                 yield "Update course \"" + course.getName() + "\" to name \"" + input.get("name")
                         + "\", subject \"" + input.get("subject") + "\"." + descriptionClause;
             }
@@ -253,25 +263,38 @@ public class SageToolExecutor {
             }
             case "save_session_notes" -> {
                 Session session = requireOwnedSession(uuidParam(input, "sessionId"), tutor);
+                SessionNoteResponse existingNotes = sessionService.getSessionNotes(session.getId(), tutor.getEmail());
+                String overwriteClause = existingNotes != null && existingNotes.rawNotes() != null
+                        && !existingNotes.rawNotes().isBlank()
+                        ? " This replaces the existing notes."
+                        : "";
                 yield "Save session notes for the session with " + session.getStudent().getName()
-                        + " on " + session.getDate() + ": \"" + input.get("rawNotes") + "\"";
+                        + " on " + session.getDate() + ": \"" + input.get("rawNotes") + "\"" + overwriteClause;
             }
             case "update_rubric_scores" -> {
                 Submission submission = requireOwnedSubmission(uuidParam(input, "submissionId"), tutor);
                 yield "Set rubric scores for " + submission.getStudent().getName()
                         + "'s submission on \"" + submission.getAssignment().getTitle() + "\": "
-                        + describeScores(input);
+                        + describeScores(submission, scoresParam(input, "scores"));
             }
             case "draft_session_notes" -> {
                 Session session = requireOwnedSession(uuidParam(input, "sessionId"), tutor);
+                SessionNoteResponse existingNotes = sessionService.getSessionNotes(session.getId(), tutor.getEmail());
+                String overwriteClause = existingNotes != null && existingNotes.formattedNotes() != null
+                        && !existingNotes.formattedNotes().isBlank()
+                        ? " This will replace the existing formatted notes."
+                        : "";
                 yield "Ask Sage to draft formatted notes from the raw notes for the session with "
-                        + session.getStudent().getName() + " on " + session.getDate() + ".";
+                        + session.getStudent().getName() + " on " + session.getDate() + "." + overwriteClause;
             }
             case "review_submission" -> {
                 Submission submission = requireOwnedSubmission(uuidParam(input, "submissionId"), tutor);
+                String overwriteClause = submission.getSageFeedback() != null && !submission.getSageFeedback().isBlank()
+                        ? " This will replace the existing Sage feedback."
+                        : "";
                 yield "Ask Sage to generate AI feedback for " + submission.getStudent().getName()
                         + "'s submission on \"" + submission.getAssignment().getTitle()
-                        + "\" (not visible to the student until you release it).";
+                        + "\" (not visible to the student until you release it)." + overwriteClause;
             }
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown write tool: " + toolName);
         };
@@ -473,13 +496,12 @@ public class SageToolExecutor {
                 new SaveSessionNotesRequest(String.valueOf(input.get("rawNotes"))), tutor.getEmail());
     }
 
-    @SuppressWarnings("unchecked")
     private SubmissionResponse updateRubricScores(Map<String, Object> input, User tutor) {
         UUID submissionId = uuidParam(input, "submissionId");
-        List<Map<String, Object>> rawScores = (List<Map<String, Object>>) input.get("scores");
+        List<Map<String, Object>> rawScores = scoresParam(input, "scores");
         List<UpdateRubricScoresRequest.ScoreInput> scores = rawScores.stream()
                 .map(s -> new UpdateRubricScoresRequest.ScoreInput(
-                        UUID.fromString(String.valueOf(s.get("criterionId"))),
+                        uuidParam(s, "criterionId"),
                         bigDecimalParam(s, "pointsAwarded")))
                 .toList();
         return submissionService.updateRubricScores(submissionId, new UpdateRubricScoresRequest(scores), tutor.getEmail());
@@ -493,14 +515,21 @@ public class SageToolExecutor {
         return sageService.reviewSubmission(uuidParam(input, "submissionId"), tutor.getEmail());
     }
 
-    @SuppressWarnings("unchecked")
-    private String describeScores(Map<String, Object> input) {
-        List<Map<String, Object>> scores = (List<Map<String, Object>>) input.get("scores");
+    private String describeScores(Submission submission, List<Map<String, Object>> scores) {
+        Rubric rubric = rubricRepository.findByAssignmentId(submission.getAssignment().getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "This assignment has no rubric"));
+        Map<UUID, RubricCriterion> criteriaById = rubricCriterionRepository
+                .findByRubricIdOrderByPositionAsc(rubric.getId()).stream()
+                .collect(java.util.stream.Collectors.toMap(RubricCriterion::getId, c -> c));
+
         StringBuilder sb = new StringBuilder();
         for (Map<String, Object> score : scores) {
-            UUID criterionId = UUID.fromString(String.valueOf(score.get("criterionId")));
-            RubricCriterion criterion = rubricCriterionRepository.findById(criterionId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid criterionId: " + criterionId));
+            UUID criterionId = uuidParam(score, "criterionId");
+            RubricCriterion criterion = criteriaById.get(criterionId);
+            if (criterion == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Criterion not found on this assignment's rubric");
+            }
             if (!sb.isEmpty()) {
                 sb.append(", ");
             }
@@ -633,6 +662,23 @@ public class SageToolExecutor {
         } catch (DateTimeParseException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid date for " + key + ": " + value);
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> scoresParam(Map<String, Object> input, String key) {
+        Object value = input.get(key);
+        if (value == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing required parameter: " + key);
+        }
+        if (!(value instanceof List<?> rawList)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid value for " + key + ": expected an array");
+        }
+        for (Object element : rawList) {
+            if (!(element instanceof Map)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid value for " + key + ": expected an array");
+            }
+        }
+        return (List<Map<String, Object>>) (List<?>) rawList;
     }
 
     private String toJson(Object value) {
