@@ -7,14 +7,23 @@ import com.notare.assignment.AssignmentRepository;
 import com.notare.assignment.dto.AssignmentResponse;
 import com.notare.course.Course;
 import com.notare.course.CourseRepository;
+import com.notare.course.CourseService;
 import com.notare.course.EnrollmentRepository;
 import com.notare.course.dto.CourseResponse;
+import com.notare.gradecategory.GradeCategoryService;
+import com.notare.gradecategory.dto.GradeCategoryResponse;
+import com.notare.material.MaterialService;
+import com.notare.material.dto.MaterialResponse;
+import com.notare.rubric.RubricService;
+import com.notare.rubric.dto.RubricResponse;
 import com.notare.sage.SageService;
+import com.notare.sage.dto.PendingReviewsResponse;
 import com.notare.sage.dto.ProgressSummaryResponse;
 import com.notare.session.Session;
 import com.notare.session.SessionRepository;
 import com.notare.session.SessionService;
 import com.notare.session.dto.CreateSessionRequest;
+import com.notare.session.dto.SessionNoteResponse;
 import com.notare.session.dto.SessionResponse;
 import com.notare.student.dto.StudentResponse;
 import com.notare.submission.Submission;
@@ -22,6 +31,8 @@ import com.notare.submission.SubmissionRepository;
 import com.notare.submission.SubmissionService;
 import com.notare.submission.dto.ReleaseFeedbackRequest;
 import com.notare.submission.dto.SubmissionResponse;
+import com.notare.topic.TopicService;
+import com.notare.topic.dto.TopicResponse;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
 import com.notare.user.UserRole;
@@ -55,6 +66,11 @@ public class SageToolExecutor {
     private final AnnouncementService announcementService;
     private final SageService sageService;
     private final ObjectMapper objectMapper;
+    private final TopicService topicService;
+    private final MaterialService materialService;
+    private final GradeCategoryService gradeCategoryService;
+    private final RubricService rubricService;
+    private final CourseService courseService;
 
     public SageToolExecutor(
             CourseRepository courseRepository,
@@ -67,7 +83,12 @@ public class SageToolExecutor {
             SessionService sessionService,
             AnnouncementService announcementService,
             SageService sageService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            TopicService topicService,
+            MaterialService materialService,
+            GradeCategoryService gradeCategoryService,
+            RubricService rubricService,
+            CourseService courseService
     ) {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -80,6 +101,11 @@ public class SageToolExecutor {
         this.announcementService = announcementService;
         this.sageService = sageService;
         this.objectMapper = objectMapper;
+        this.topicService = topicService;
+        this.materialService = materialService;
+        this.gradeCategoryService = gradeCategoryService;
+        this.rubricService = rubricService;
+        this.courseService = courseService;
     }
 
     public String execute(String toolName, Map<String, Object> input, User tutor) {
@@ -94,6 +120,14 @@ public class SageToolExecutor {
             case "get_submission" -> getSubmission(input, tutor);
             case "list_sessions" -> listSessions(input, tutor);
             case "get_student_progress" -> getStudentProgress(input, tutor);
+            case "get_session" -> getSession(input, tutor);
+            case "get_session_notes" -> getSessionNotes(input, tutor);
+            case "list_materials" -> listMaterials(input, tutor);
+            case "list_topics" -> listTopics(input, tutor);
+            case "get_rubric" -> getRubric(input, tutor);
+            case "list_grade_categories" -> listGradeCategories(input, tutor);
+            case "list_enrolled_students" -> listEnrolledStudents(input, tutor);
+            case "list_pending_reviews" -> listPendingReviews(input, tutor);
             case "release_feedback" -> releaseFeedback(input, tutor);
             case "schedule_session" -> scheduleSession(input, tutor);
             case "complete_session" -> completeSession(input, tutor);
@@ -207,6 +241,38 @@ public class SageToolExecutor {
 
     private ProgressSummaryResponse getStudentProgress(Map<String, Object> input, User tutor) {
         return sageService.generateProgressSummary(uuidParam(input, "studentId"), tutor.getEmail());
+    }
+
+    private SessionResponse getSession(Map<String, Object> input, User tutor) {
+        return sessionService.getSession(uuidParam(input, "sessionId"), tutor.getEmail());
+    }
+
+    private SessionNoteResponse getSessionNotes(Map<String, Object> input, User tutor) {
+        return sessionService.getSessionNotes(uuidParam(input, "sessionId"), tutor.getEmail());
+    }
+
+    private List<MaterialResponse> listMaterials(Map<String, Object> input, User tutor) {
+        return materialService.listMaterials(uuidParam(input, "courseId"), tutor.getEmail());
+    }
+
+    private List<TopicResponse> listTopics(Map<String, Object> input, User tutor) {
+        return topicService.listTopics(uuidParam(input, "courseId"), tutor.getEmail());
+    }
+
+    private RubricResponse getRubric(Map<String, Object> input, User tutor) {
+        return rubricService.getRubric(uuidParam(input, "assignmentId"), tutor.getEmail());
+    }
+
+    private List<GradeCategoryResponse> listGradeCategories(Map<String, Object> input, User tutor) {
+        return gradeCategoryService.listCategories(uuidParam(input, "courseId"), tutor.getEmail());
+    }
+
+    private List<StudentResponse> listEnrolledStudents(Map<String, Object> input, User tutor) {
+        return courseService.listEnrolledStudents(uuidParam(input, "courseId"), tutor.getEmail());
+    }
+
+    private PendingReviewsResponse listPendingReviews(Map<String, Object> input, User tutor) {
+        return sageService.pendingReviewsCount(tutor.getEmail());
     }
 
     // ---- write tools ----
