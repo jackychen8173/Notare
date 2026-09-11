@@ -2,6 +2,16 @@
 
 Notable changes to this project, most recent first. See `CLAUDE.md` for when to add an entry.
 
+## 2026-09-11
+
+- Expanded Sage Chat's tool set (final task of 4-task plan): added 8 new read tools and 11 new write tools to cover the app's full feature set, plus system-prompt update reflecting the expanded scope.
+  - **New read tools**: `get_session`, `get_session_notes`, `list_materials`, `list_topics`, `get_rubric`, `list_grade_categories`, `list_enrolled_students`, `list_pending_reviews` — all execute immediately, no confirmation needed, and delegate to existing service methods that already enforce tutor-ownership checks.
+  - **New write tools**: `update_course`, `create_assignment`, `create_material`, `create_topic`, `rename_topic`, `create_grade_category`, `update_grade_category`, `save_session_notes`, `update_rubric_scores`, `draft_session_notes`, `review_submission` — all pause the loop and require tutor confirmation before executing. `WRITE_TOOL_NAMES` grows to 15 entries (from the original 4: `release_feedback`, `schedule_session`, `complete_session`, `post_announcement`).
+  - **New schema shape**: `update_rubric_scores` accepts an `array<{criterionId: string, pointsAwarded: number}>` parameter, requiring a new raw-schema tool-builder entry point in `SageToolDefinitions` (first and only use of this shape across all tools).
+  - **System prompt update** (`SageChatService.CHAT_SYSTEM_PROMPT`): reflects the expanded read/write scope and adds guidance on partial updates (`update_course`, `update_grade_category`) — look up current values first and carry unchanged fields forward, since the update replaces the whole record.
+  - **Verified**: backend `./mvnw.cmd -q compile` clean after each prior task (tool definitions, 8 read tools, 11 write tools). Final debug-endpoint smoke test followed the temporary debug technique established earlier (never committed), using a test request to confirm every new tool's actual behavior (ownership checks, parameter validation, return types matching their delegated service methods) without hitting the Anthropic API — same standing limitation as the original feature (no reachable `ANTHROPIC_API_KEY` in this environment).
+  - **Pre-existing bug fix**: Commit `9e60135` found and fixed a real bug while testing — `SubmissionService.updateRubricScores` threw a duplicate-key error when re-scoring an already-scored submission (Hibernate flush-ordering issue), fixed with an explicit `flush()` call in the service method.
+
 ## 2026-09-10 (3)
 
 - Built the Sage Chat feature end to end (9-task plan, `sage-chat` branch): a tool-use conversational interface letting a tutor ask Sage to look things up or take actions on their behalf, on top of the existing one-shot Sage endpoints (`draft-notes`, `review-submission`, etc.) which stay untouched.
