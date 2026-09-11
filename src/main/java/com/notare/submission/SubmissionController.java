@@ -4,6 +4,7 @@ import com.notare.common.ApiResponse;
 import com.notare.submission.dto.ReleaseFeedbackRequest;
 import com.notare.submission.dto.SubmissionResponse;
 import com.notare.submission.dto.SubmitAssignmentRequest;
+import com.notare.submission.dto.UpdateRubricScoresRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -66,6 +68,17 @@ public class SubmissionController {
             Authentication authentication
     ) {
         SubmissionResponse response = submissionService.releaseFeedback(id, request, authentication.getName());
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PutMapping("/api/submissions/{id}/rubric-scores")
+    @PreAuthorize("hasRole('TUTOR')")
+    public ResponseEntity<ApiResponse<SubmissionResponse>> updateRubricScores(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateRubricScoresRequest request,
+            Authentication authentication
+    ) {
+        SubmissionResponse response = submissionService.updateRubricScores(id, request, authentication.getName());
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

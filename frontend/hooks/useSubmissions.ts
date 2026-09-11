@@ -115,3 +115,21 @@ export function useReleaseFeedback(id: string) {
     },
   });
 }
+
+export interface RubricScoreInput {
+  criterionId: string;
+  pointsAwarded: number;
+}
+
+export function useUpdateRubricScores(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (scores: RubricScoreInput[]) => {
+      const res = await api.put<ApiEnvelope<Submission>>(`/api/submissions/${id}/rubric-scores`, { scores });
+      return res.data.data;
+    },
+    onSuccess: (submission) => {
+      queryClient.setQueryData(submissionKeys.detail(id), submission);
+    },
+  });
+}

@@ -1,6 +1,8 @@
 package com.notare.assignment;
 
 import com.notare.course.Course;
+import com.notare.gradecategory.GradeCategory;
+import com.notare.topic.Topic;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -33,6 +35,14 @@ public class Assignment {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "topic_id")
+    private Topic topic;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "grade_category_id")
+    private GradeCategory gradeCategory;
 
     @Column(nullable = false)
     private String title;

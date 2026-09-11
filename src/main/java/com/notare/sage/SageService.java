@@ -15,7 +15,9 @@ import com.notare.session.SessionNoteRepository;
 import com.notare.session.SessionRepository;
 import com.notare.session.dto.SessionNoteResponse;
 import com.notare.submission.Submission;
+import com.notare.submission.SubmissionCriterionScoreRepository;
 import com.notare.submission.SubmissionRepository;
+import com.notare.submission.dto.RubricScoreItem;
 import com.notare.submission.dto.SubmissionResponse;
 import com.notare.submission.FeedbackStatus;
 import com.notare.user.User;
@@ -59,6 +61,7 @@ public class SageService {
     private final SessionRepository sessionRepository;
     private final SessionNoteRepository sessionNoteRepository;
     private final SubmissionRepository submissionRepository;
+    private final SubmissionCriterionScoreRepository criterionScoreRepository;
     private final UserRepository userRepository;
 
     public SageService(
@@ -67,6 +70,7 @@ public class SageService {
             SessionRepository sessionRepository,
             SessionNoteRepository sessionNoteRepository,
             SubmissionRepository submissionRepository,
+            SubmissionCriterionScoreRepository criterionScoreRepository,
             UserRepository userRepository
     ) {
         this.anthropicClient = anthropicClient;
@@ -74,6 +78,7 @@ public class SageService {
         this.sessionRepository = sessionRepository;
         this.sessionNoteRepository = sessionNoteRepository;
         this.submissionRepository = submissionRepository;
+        this.criterionScoreRepository = criterionScoreRepository;
         this.userRepository = userRepository;
     }
 
@@ -97,7 +102,16 @@ public class SageService {
         submission.setSageFeedback(toJson(feedback));
         submissionRepository.save(submission);
 
-        return SubmissionResponse.from(submission);
+        List<RubricScoreItem> rubricScores = criterionScoreRepository.findBySubmissionId(submission.getId()).stream()
+                .map(score -> new RubricScoreItem(
+                        score.getCriterion().getId(),
+                        score.getCriterion().getName(),
+                        score.getPointsAwarded(),
+                        score.getCriterion().getPointsPossible()
+                ))
+                .toList();
+
+        return SubmissionResponse.from(submission, rubricScores);
     }
 
     @Transactional(readOnly = true)

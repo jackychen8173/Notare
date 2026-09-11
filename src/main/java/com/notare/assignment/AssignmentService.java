@@ -5,6 +5,10 @@ import com.notare.assignment.dto.CreateAssignmentRequest;
 import com.notare.course.Course;
 import com.notare.course.CourseRepository;
 import com.notare.course.EnrollmentRepository;
+import com.notare.gradecategory.GradeCategory;
+import com.notare.gradecategory.GradeCategoryRepository;
+import com.notare.topic.Topic;
+import com.notare.topic.TopicRepository;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
 import com.notare.user.UserRole;
@@ -24,24 +28,50 @@ public class AssignmentService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
+    private final TopicRepository topicRepository;
+    private final GradeCategoryRepository gradeCategoryRepository;
 
     public AssignmentService(
             AssignmentRepository assignmentRepository,
             CourseRepository courseRepository,
             EnrollmentRepository enrollmentRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            TopicRepository topicRepository,
+            GradeCategoryRepository gradeCategoryRepository
     ) {
         this.assignmentRepository = assignmentRepository;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
+        this.topicRepository = topicRepository;
+        this.gradeCategoryRepository = gradeCategoryRepository;
     }
 
     public AssignmentResponse createAssignment(UUID courseId, CreateAssignmentRequest request, String tutorEmail) {
         Course course = requireOwnedCourse(courseId, tutorEmail);
 
+        if (course.getArchivedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot add assignments to an archived course");
+        }
+
+        Topic topic = null;
+        if (request.topicId() != null) {
+            topic = topicRepository.findById(request.topicId())
+                    .filter(candidate -> candidate.getCourse().getId().equals(course.getId()))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found"));
+        }
+
+        GradeCategory gradeCategory = null;
+        if (request.gradeCategoryId() != null) {
+            gradeCategory = gradeCategoryRepository.findById(request.gradeCategoryId())
+                    .filter(candidate -> candidate.getCourse().getId().equals(course.getId()))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Grade category not found"));
+        }
+
         Assignment assignment = Assignment.builder()
                 .course(course)
+                .topic(topic)
+                .gradeCategory(gradeCategory)
                 .title(request.title())
                 .description(request.description())
                 .dueDate(request.dueDate())

@@ -5,10 +5,13 @@ import { useState } from "react";
 import { SageFeedbackBlock } from "@/components/sage/SageFeedbackBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { useReleaseFeedback, useReviewSubmission } from "@/hooks/useSubmissions";
+import { useRubric } from "@/hooks/useRubrics";
+import { useReleaseFeedback, useReviewSubmission, useUpdateRubricScores } from "@/hooks/useSubmissions";
 import type { FeedbackStatus, Submission } from "@/types/submission";
 
 const statusVariant: Record<FeedbackStatus, "default" | "secondary"> = {
@@ -19,6 +22,65 @@ const statusVariant: Record<FeedbackStatus, "default" | "secondary"> = {
 
 interface SubmissionReviewProps {
   submission: Submission;
+}
+
+function RubricScoring({ submission }: { submission: Submission }) {
+  const rubric = useRubric(submission.assignmentId);
+  const updateScores = useUpdateRubricScores(submission.id);
+  const [scores, setScores] = useState<Record<string, string>>(() =>
+    Object.fromEntries(submission.rubricScores.map((s) => [s.criterionId, String(s.pointsAwarded)])),
+  );
+
+  if (rubric.isLoading) {
+    return <Skeleton className="h-16 w-full" />;
+  }
+
+  if (!rubric.data) {
+    return null;
+  }
+
+  function onSave() {
+    if (!rubric.data) return;
+    updateScores.mutate(
+      rubric.data.criteria.map((criterion) => ({
+        criterionId: criterion.id,
+        pointsAwarded: Number(scores[criterion.id] ?? 0),
+      })),
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-3">
+        <p className="text-sm font-medium text-foreground">{rubric.data.title}</p>
+        {rubric.data.criteria.map((criterion) => (
+          <div key={criterion.id} className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-foreground">{criterion.name}</p>
+              {criterion.description ? (
+                <p className="text-xs text-muted-foreground">{criterion.description}</p>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Input
+                type="number"
+                min={0}
+                max={criterion.pointsPossible}
+                step="0.5"
+                className="w-20"
+                value={scores[criterion.id] ?? ""}
+                onChange={(event) => setScores((prev) => ({ ...prev, [criterion.id]: event.target.value }))}
+              />
+              <span className="text-xs text-muted-foreground">/ {criterion.pointsPossible}</span>
+            </div>
+          </div>
+        ))}
+        <Button type="button" size="sm" className="self-end" disabled={updateScores.isPending} onClick={onSave}>
+          {updateScores.isPending ? "Saving..." : "Save rubric scores"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
 }
 
 export function SubmissionReview({ submission }: SubmissionReviewProps) {
@@ -47,6 +109,8 @@ export function SubmissionReview({ submission }: SubmissionReviewProps) {
           {submission.content}
         </pre>
       </div>
+
+      <RubricScoring submission={submission} />
 
       {submission.sageFeedback ? (
         <SageFeedbackBlock feedbackJson={submission.sageFeedback} />

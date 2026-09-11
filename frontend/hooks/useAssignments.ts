@@ -70,6 +70,8 @@ export interface CreateAssignmentInput {
   title: string;
   description?: string;
   dueDate: string;
+  topicId?: string;
+  gradeCategoryId?: string;
 }
 
 export function useCreateAssignment(courseId: string) {

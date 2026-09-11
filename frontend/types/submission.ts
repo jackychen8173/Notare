@@ -1,5 +1,12 @@
 export type FeedbackStatus = "PENDING" | "APPROVED" | "REVISED";
 
+export interface RubricScoreItem {
+  criterionId: string;
+  criterionName: string;
+  pointsAwarded: number;
+  pointsPossible: number;
+}
+
 export interface Submission {
   id: string;
   assignmentId: string;
@@ -12,4 +19,7 @@ export interface Submission {
   grade: string | null;
   submittedAt: string;
   releasedAt: string | null;
+  rubricScores: RubricScoreItem[];
+  rubricTotalAwarded: number | null;
+  rubricTotalPossible: number | null;
 }

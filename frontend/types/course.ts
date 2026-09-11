@@ -6,4 +6,5 @@ export interface Course {
   subject: string;
   description: string | null;
   joinCode: string | null;
+  archivedAt: string | null;
 }
