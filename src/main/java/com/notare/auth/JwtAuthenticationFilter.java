@@ -1,5 +1,7 @@
 package com.notare.auth;
 
+import com.notare.user.User;
+import com.notare.user.UserRepository;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,9 +24,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtUtil jwtUtil;
+    private final UserRepository userRepository;
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil) {
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, UserRepository userRepository) {
         this.jwtUtil = jwtUtil;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -42,12 +46,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     String email = jwtUtil.extractEmail(token);
                     String role = jwtUtil.extractRole(token);
 
-                    Authentication authentication = new UsernamePasswordAuthenticationToken(
-                            email,
-                            null,
-                            List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                    );
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    boolean active = userRepository.findByEmail(email)
+                            .map(User::isActive)
+                            .orElse(false);
+
+                    if (active) {
+                        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                                email,
+                                null,
+                                List.of(new SimpleGrantedAuthority("ROLE_" + role))
+                        );
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+                    }
                 }
             } catch (JwtException | IllegalArgumentException ignored) {
                 SecurityContextHolder.clearContext();
