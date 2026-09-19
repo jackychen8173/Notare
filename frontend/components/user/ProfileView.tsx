@@ -18,6 +18,12 @@ const editProfileSchema = z.object({
 
 type EditProfileValues = z.infer<typeof editProfileSchema>;
 
+const roleLabel: Record<"TUTOR" | "STUDENT" | "ADMIN", string> = {
+  TUTOR: "Tutor",
+  STUDENT: "Student",
+  ADMIN: "Admin",
+};
+
 export function ProfileView() {
   const profile = useProfile();
   const updateProfile = useUpdateProfile();
@@ -61,7 +67,7 @@ export function ProfileView() {
       <CardHeader>
         <div className="flex items-center gap-2">
           <CardTitle>Profile</CardTitle>
-          <Badge variant="outline">{profile.data.role === "TUTOR" ? "Tutor" : "Student"}</Badge>
+          <Badge variant="outline">{roleLabel[profile.data.role]}</Badge>
         </div>
       </CardHeader>
       <CardContent>

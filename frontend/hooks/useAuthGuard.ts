@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import type { UserRole } from "@/types/user";
 
+const ROLE_HOME: Record<UserRole, string> = {
+  TUTOR: "/dashboard",
+  STUDENT: "/student/dashboard",
+  ADMIN: "/admin/dashboard",
+};
+
 export function useAuthGuard(requiredRole: UserRole): boolean {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
@@ -15,7 +21,7 @@ export function useAuthGuard(requiredRole: UserRole): boolean {
     if (!session) {
       router.replace("/login");
     } else if (session.role !== requiredRole) {
-      router.replace(session.role === "TUTOR" ? "/dashboard" : "/student/dashboard");
+      router.replace(ROLE_HOME[session.role]);
     } else {
       // getSession() reads localStorage, unavailable during SSR — this can only
       // be determined after mount, so it isn't derivable during render.

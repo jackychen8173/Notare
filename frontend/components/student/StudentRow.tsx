@@ -7,15 +7,16 @@ import type { Student } from "@/types/user";
 
 interface StudentRowProps {
   student: Student;
+  href?: string;
   onRemove?: () => void;
   removePending?: boolean;
 }
 
-export function StudentRow({ student, onRemove, removePending }: StudentRowProps) {
+export function StudentRow({ student, href, onRemove, removePending }: StudentRowProps) {
   return (
     <TableRow>
       <TableCell>
-        <Link href={`/students/${student.id}`} className="flex items-center gap-3">
+        <Link href={href ?? `/students/${student.id}`} className="flex items-center gap-3">
           <StudentAvatar name={student.name} size="sm" />
           <span className="font-medium text-foreground">{student.name}</span>
         </Link>

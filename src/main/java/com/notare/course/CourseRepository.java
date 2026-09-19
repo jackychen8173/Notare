@@ -8,7 +8,9 @@ import java.util.UUID;
 
 public interface CourseRepository extends JpaRepository<Course, UUID> {
 
-    List<Course> findByTutorId(UUID tutorId);
+    List<Course> findByTutorIdAndArchivedAtIsNull(UUID tutorId);
+
+    List<Course> findByTutorIdAndArchivedAtIsNotNull(UUID tutorId);
 
     Optional<Course> findByJoinCode(String joinCode);
 

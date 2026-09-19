@@ -53,6 +53,9 @@ public class SessionService {
                 // 404, not 403 - avoid confirming another tutor's course exists
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found");
             }
+            if (course.getArchivedAt() != null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot schedule sessions for an archived course");
+            }
         }
 
         Session session = Session.builder()

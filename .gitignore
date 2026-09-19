@@ -1,11 +1,11 @@
 # --- Java / Maven ---
 target/
-!.mvn/wrapper/maven-wrapper.jar
 *.class
 *.jar
 *.war
 *.log
 hs_err_pid*
+!.mvn/wrapper/maven-wrapper.jar
 
 # --- Secrets / local config ---
 .env
@@ -42,3 +42,6 @@ Thumbs.db
 
 # --- Claude Code local settings ---
 .claude/settings.local.json
+
+# --- Superpowers subagent-driven-development scratch workspaces ---
+.superpowers/

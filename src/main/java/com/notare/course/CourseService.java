@@ -2,6 +2,7 @@ package com.notare.course;
 
 import com.notare.course.dto.CourseResponse;
 import com.notare.course.dto.CreateCourseRequest;
+import com.notare.course.dto.UpdateCourseRequest;
 import com.notare.student.dto.StudentResponse;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -62,10 +64,40 @@ public class CourseService {
         return CourseResponse.from(course);
     }
 
+    public CourseResponse updateCourse(UUID courseId, UpdateCourseRequest request, String tutorEmail) {
+        Course course = requireOwnedCourse(courseId, tutorEmail);
+        requireNotArchived(course, "Cannot edit an archived course");
+
+        course.setName(request.name());
+        course.setSubject(request.subject());
+        course.setDescription(request.description());
+        courseRepository.save(course);
+
+        return CourseResponse.from(course);
+    }
+
+    public CourseResponse archiveCourse(UUID courseId, String tutorEmail) {
+        Course course = requireOwnedCourse(courseId, tutorEmail);
+        if (course.getArchivedAt() == null) {
+            course.setArchivedAt(LocalDateTime.now());
+            courseRepository.save(course);
+        }
+        return CourseResponse.from(course);
+    }
+
+    public CourseResponse unarchiveCourse(UUID courseId, String tutorEmail) {
+        Course course = requireOwnedCourse(courseId, tutorEmail);
+        course.setArchivedAt(null);
+        courseRepository.save(course);
+        return CourseResponse.from(course);
+    }
+
     public void joinCourseByCode(String code, String studentEmail) {
         User student = requireStudentUser(studentEmail);
         Course course = courseRepository.findByJoinCode(code.trim().toUpperCase())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Invalid join code"));
+
+        requireNotArchived(course, "This course is no longer accepting new students");
 
         if (enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), course.getId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Already enrolled in this course");
@@ -104,9 +136,12 @@ public class CourseService {
     }
 
     @Transactional(readOnly = true)
-    public List<CourseResponse> listCourses(String tutorEmail) {
+    public List<CourseResponse> listCourses(String tutorEmail, boolean archived) {
         User tutor = requireTutor(tutorEmail);
-        return courseRepository.findByTutorId(tutor.getId()).stream()
+        List<Course> courses = archived
+                ? courseRepository.findByTutorIdAndArchivedAtIsNotNull(tutor.getId())
+                : courseRepository.findByTutorIdAndArchivedAtIsNull(tutor.getId());
+        return courses.stream()
                 .map(CourseResponse::from)
                 .toList();
     }
@@ -173,5 +208,11 @@ public class CourseService {
         }
 
         return course;
+    }
+
+    private void requireNotArchived(Course course, String message) {
+        if (course.getArchivedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, message);
+        }
     }
 }
