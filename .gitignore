@@ -1,11 +1,11 @@
 # --- Java / Maven ---
 target/
-!.mvn/wrapper/maven-wrapper.jar
 *.class
 *.jar
 *.war
 *.log
 hs_err_pid*
+!.mvn/wrapper/maven-wrapper.jar
 
 # --- Secrets / local config ---
 .env
