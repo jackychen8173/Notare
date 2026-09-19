@@ -1,4 +1,4 @@
-export type UserRole = "TUTOR" | "STUDENT";
+export type UserRole = "TUTOR" | "STUDENT" | "ADMIN";
 
 export interface AuthSession {
   token: string;

@@ -45,7 +45,12 @@ export default function LoginPage() {
       );
       const session = response.data.data;
       saveSession(session);
-      router.push(session.role === "TUTOR" ? "/dashboard" : "/student/dashboard");
+      const roleHome: Record<typeof session.role, string> = {
+        TUTOR: "/dashboard",
+        STUDENT: "/student/dashboard",
+        ADMIN: "/admin/dashboard",
+      };
+      router.push(roleHome[session.role]);
     } catch (error) {
       if (axios.isAxiosError<{ message?: string }>(error)) {
         setServerError(error.response?.data?.message ?? "Something went wrong. Try again.");
