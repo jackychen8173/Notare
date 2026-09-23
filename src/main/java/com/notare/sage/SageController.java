@@ -1,7 +1,9 @@
 package com.notare.sage;
 
 import com.notare.common.ApiResponse;
+import com.notare.quizattempt.dto.QuizAttemptResponse;
 import com.notare.sage.dto.DraftNotesRequest;
+import com.notare.sage.dto.DraftQuizAnswerFeedbackRequest;
 import com.notare.sage.dto.PendingReviewsResponse;
 import com.notare.sage.dto.ProgressSummaryResponse;
 import com.notare.sage.dto.ReviewSubmissionRequest;
@@ -47,6 +49,15 @@ public class SageController {
     ) {
         return ResponseEntity.ok(ApiResponse.success(
                 sageService.reviewSubmission(request.submissionId(), authentication.getName())));
+    }
+
+    @PostMapping("/draft-quiz-answer-feedback")
+    public ResponseEntity<ApiResponse<QuizAttemptResponse>> draftQuizAnswerFeedback(
+            @Valid @RequestBody DraftQuizAnswerFeedbackRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(sageService.draftQuizAnswerFeedback(
+                request.attemptId(), request.questionId(), authentication.getName())));
     }
 
     @GetMapping("/student-progress/{id}")
