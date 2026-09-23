@@ -2,6 +2,15 @@
 
 Notable changes to this project, most recent first. See `CLAUDE.md` for when to add an entry.
 
+## 2026-09-20
+
+- Deployed PR #8 (Sage chat tool coverage + admin portal, squash-merged to `main` as `ec996b9` on 2026-09-19) to production; found the backend had *not* auto-deployed and fixed that by hand.
+  - **Vercel**: fine — the production deploy was created at the merge (07:16:52Z) and was Ready; `/login` and `/admin/dashboard` return 200.
+  - **Railway**: no deployment was ever created for #8. The last one was `8dedac6` (PR #7, 2026-09-09), so the live frontend was calling admin/Sage endpoints the backend didn't have (`/v3/api-docs` had no `/api/admin/*`). Not a failed build — the `main` trigger just never fired; cause not found (dropped webhook or a "wait for CI" setting are the suspects, unchecked). `railway redeploy` was ruled out since it rebuilds the last deployment's commit, not the newest `main`. Deployed instead with `railway up --service backend --environment production --detach` from the repo root (tree identical to `main`), naming project/service explicitly to avoid the earlier `railway up` stray-project footgun. This is a CLI-upload deploy, not a git-sourced one.
+  - **Flyway**: production was at schema version 6; the deploy applied V7–V15 (course archive, topics, materials, announcements, grade categories, rubrics, Sage chat, `ADMIN` role, `users.active`) in ~0.15s, no errors. App started in 5.9s.
+  - **Verified**: deployment `7293138e` reached SUCCESS; live `/v3/api-docs` now lists 12 `/api/admin/*` paths plus `/api/sage/chat`; unauthenticated `/api/admin/dashboard` returns 401; `ANTHROPIC_API_KEY`, `JWT_SECRET`, `CORS_ALLOWED_ORIGINS` all present in Railway (names checked, not values). **Not verified**: any real login or admin flow (no `ADMIN` user is seeded — registration rejects that role), and the Sage chat transaction-boundary risk from 2026-09-11 (3) is still untested, though a live key now exists in production.
+- Synced `develop` with `main` after the squash-merge: `git merge origin/main` on `develop` (commit `cbf6240`), pushed without force. Trees were identical, so it's a content-free merge commit — the goal is only to make `main`'s tip an ancestor of `develop` so the next PR doesn't re-list 48 already-merged commits.
+
 ## 2026-09-18
 
 - Built an admin portal, an 18-task Subagent-Driven Development plan (`.superpowers/sdd/2026-09-18-admin-portal/`) adding a new `ADMIN` role plus a full parallel read/oversight surface, both backend and frontend.
