@@ -228,6 +228,22 @@ public final class SageToolDefinitions {
                             + "shown to the student until the tutor separately calls release_feedback. "
                             + "This is a write action requiring tutor confirmation before it takes effect.",
                     List.of(new Param("submissionId", "string", "The submission's UUID")),
-                    List.of("submissionId"))
+                    List.of("submissionId")),
+            tool("draft_quiz_answer_feedback",
+                    "Ask Sage to draft a suggested score and feedback for one short answer or essay "
+                            + "quiz question in a student's quiz attempt. The suggestion is stored but "
+                            + "NOT shown to the student until the tutor separately calls "
+                            + "release_quiz_attempt. This is a write action requiring tutor "
+                            + "confirmation before it takes effect.",
+                    List.of(
+                            new Param("attemptId", "string", "The quiz attempt's UUID"),
+                            new Param("questionId", "string", "The question's UUID")),
+                    List.of("attemptId", "questionId")),
+            tool("release_quiz_attempt",
+                    "Release a quiz attempt's results (score, per-question feedback) to the student, "
+                            + "making them visible. This is a write action requiring tutor confirmation "
+                            + "before it takes effect.",
+                    List.of(new Param("attemptId", "string", "The quiz attempt's UUID")),
+                    List.of("attemptId"))
     );
 }
