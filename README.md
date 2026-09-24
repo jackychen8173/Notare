@@ -1,5 +1,7 @@
 # Notare
 
+Live Link: ([https://notare-frontend.vercel.app/](https://notare-frontend.vercel.app/))
+
 A tutoring management platform for AP Computer Science A (Java), with an embedded AI assistant
 called **Sage** powered by the Anthropic Claude API.
 
