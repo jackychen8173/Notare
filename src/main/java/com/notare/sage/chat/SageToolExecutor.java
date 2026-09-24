@@ -20,6 +20,7 @@ import com.notare.gradecategory.dto.CreateGradeCategoryRequest;
 import com.notare.gradecategory.dto.GradeCategoryResponse;
 import com.notare.gradecategory.dto.UpdateGradeCategoryRequest;
 import com.notare.material.MaterialService;
+import com.notare.material.MaterialType;
 import com.notare.material.dto.CreateMaterialRequest;
 import com.notare.material.dto.MaterialResponse;
 import com.notare.quizattempt.QuizAttempt;
@@ -487,7 +488,12 @@ public class SageToolExecutor {
         String description = input.get("description") != null ? String.valueOf(input.get("description")) : null;
         String url = input.get("url") != null ? String.valueOf(input.get("url")) : null;
         UUID topicId = input.get("topicId") != null ? uuidParam(input, "topicId") : null;
-        return materialService.createMaterial(courseId, new CreateMaterialRequest(title, description, url, topicId), tutor.getEmail());
+        // Sage's chat tool has no notion of embed type - defaults to LINK, matching every material's
+        // behavior before this field existed. The tutor can add a Google Doc/Slides/PDF material
+        // directly via the UI when they want an embedded viewer.
+        return materialService.createMaterial(courseId,
+                new CreateMaterialRequest(title, description, url, topicId, MaterialType.LINK),
+                tutor.getEmail());
     }
 
     private TopicResponse createTopic(Map<String, Object> input, User tutor) {

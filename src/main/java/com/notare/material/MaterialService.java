@@ -62,6 +62,7 @@ public class MaterialService {
                 .title(request.title())
                 .description(request.description())
                 .url(request.url())
+                .type(request.type())
                 .build();
 
         materialRepository.save(material);
