@@ -114,7 +114,7 @@ export default function LoginPage() {
               <div className="h-px flex-1 bg-border" />
             </div>
 
-            <GoogleSignInButton endpoint="/api/auth/google/login" />
+            <GoogleSignInButton />
 
             <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}

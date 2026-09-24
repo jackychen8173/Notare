@@ -8,7 +8,6 @@ import axios from "axios";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,12 +47,10 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     control,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
   });
-  const selectedRole = watch("role");
 
   async function onSubmit(values: RegisterFormValues) {
     setServerError(null);
@@ -171,30 +168,17 @@ export default function RegisterPage() {
               {isSubmitting ? "Creating account..." : "Create account"}
             </Button>
 
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">or</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <GoogleSignInButton
-                endpoint="/api/auth/google/register"
-                role={selectedRole}
-                disabled={!selectedRole}
-              />
-              {!selectedRole ? (
-                <p className="text-xs text-muted-foreground">
-                  Choose &ldquo;I am a&rdquo; above to sign up with Google.
-                </p>
-              ) : null}
-            </div>
-
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}
               <Link href="/login" className="text-foreground underline underline-offset-4">
                 Sign in
               </Link>
+              {" · "}
+              Signing up with Google?{" "}
+              <Link href="/login" className="text-foreground underline underline-offset-4">
+                Use the Google button on the sign in page
+              </Link>
+              .
             </p>
           </form>
         </CardContent>

@@ -4,6 +4,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 import com.notare.auth.dto.AuthResponse;
 import com.notare.auth.dto.GoogleAuthRequest;
+import com.notare.auth.dto.GoogleAuthResult;
 import com.notare.auth.dto.LoginRequest;
 import com.notare.auth.dto.RegisterRequest;
 import com.notare.user.User;
@@ -74,32 +75,27 @@ public class AuthService {
         return toAuthResponse(user);
     }
 
-    public AuthResponse loginWithGoogle(GoogleAuthRequest request) {
+    // Single combined sign-in-or-sign-up. An existing account (by verified email) always just
+    // logs in, regardless of whether a role was passed. A brand-new account needs a role: if none
+    // was supplied yet, returns needsRole=true so the frontend can ask for one and re-POST the
+    // same idToken - no second Google popup needed, since verification already happened once.
+    public GoogleAuthResult authenticateWithGoogle(GoogleAuthRequest request) {
         GoogleIdToken.Payload payload = verifyGoogleIdToken(request.idToken());
 
-        User user = userRepository.findByEmail(payload.getEmail())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-                        "No account found for this email - sign up first"));
-
-        if (!user.isActive()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is deactivated");
+        var existing = userRepository.findByEmail(payload.getEmail());
+        if (existing.isPresent()) {
+            User user = existing.get();
+            if (!user.isActive()) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is deactivated");
+            }
+            return new GoogleAuthResult(false, toAuthResponse(user));
         }
 
-        return toAuthResponse(user);
-    }
-
-    public AuthResponse registerWithGoogle(GoogleAuthRequest request) {
         if (request.role() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "role is required");
+            return new GoogleAuthResult(true, null);
         }
         if (request.role() == UserRole.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin accounts cannot self-register");
-        }
-
-        GoogleIdToken.Payload payload = verifyGoogleIdToken(request.idToken());
-
-        if (userRepository.existsByEmail(payload.getEmail())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered - sign in instead");
         }
 
         // Google-created accounts get an unguessable, properly-hashed placeholder rather than a
@@ -115,7 +111,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        return toAuthResponse(user);
+        return new GoogleAuthResult(false, toAuthResponse(user));
     }
 
     private GoogleIdToken.Payload verifyGoogleIdToken(String idToken) {
