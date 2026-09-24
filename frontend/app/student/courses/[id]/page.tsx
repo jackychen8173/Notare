@@ -5,15 +5,18 @@ import { use } from "react";
 import { AssignmentCard } from "@/components/assignment/AssignmentCard";
 import { StudentAnnouncementsSection } from "@/components/course/AnnouncementsSection";
 import { StudentMaterialsSection } from "@/components/course/MaterialsSection";
+import { QuizCard } from "@/components/quiz/QuizCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyCourseAssignments } from "@/hooks/useAssignments";
 import { useMyCourse } from "@/hooks/useCourses";
+import { useMyCourseQuizzes } from "@/hooks/useQuizzes";
 
 export default function StudentCourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const course = useMyCourse(id);
   const assignments = useMyCourseAssignments(id);
+  const quizzes = useMyCourseQuizzes(id);
 
   if (course.isLoading) {
     return (
@@ -56,6 +59,25 @@ export default function StudentCourseDetailPage({ params }: { params: Promise<{ 
           <Card>
             <CardContent>
               <p className="text-sm text-muted-foreground">No assignments yet.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-lg font-medium text-foreground">Quizzes</h2>
+        {quizzes.isLoading ? (
+          <Skeleton className="h-16 w-full" />
+        ) : quizzes.data && quizzes.data.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {quizzes.data.map((quiz) => (
+              <QuizCard key={quiz.id} quiz={quiz} href={`/student/quizzes/${quiz.id}`} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">No quizzes yet.</p>
             </CardContent>
           </Card>
         )}

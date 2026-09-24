@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useState } from "react";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -10,6 +11,7 @@ import { AnnouncementsSection } from "@/components/course/AnnouncementsSection";
 import { GradeCategoriesManager } from "@/components/course/GradeCategoriesManager";
 import { MaterialsSection } from "@/components/course/MaterialsSection";
 import { TopicsManager } from "@/components/course/TopicsManager";
+import { QuizCard } from "@/components/quiz/QuizCard";
 import { StudentRow } from "@/components/student/StudentRow";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -41,6 +43,7 @@ import {
   useUpdateCourse,
 } from "@/hooks/useCourses";
 import { useGradeCategories } from "@/hooks/useGradeCategories";
+import { useCourseQuizzes, useCreateQuiz } from "@/hooks/useQuizzes";
 import { useTopics } from "@/hooks/useTopics";
 
 const editCourseSchema = z.object({
@@ -199,6 +202,142 @@ function NewAssignmentDialog({ courseId }: { courseId: string }) {
   );
 }
 
+const createQuizSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().optional(),
+  timeLimitMinutes: z.string().optional(),
+  topicId: z.string().optional(),
+  gradeCategoryId: z.string().optional(),
+});
+
+type CreateQuizValues = z.infer<typeof createQuizSchema>;
+
+function NewQuizDialog({ courseId }: { courseId: string }) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const createQuiz = useCreateQuiz(courseId);
+  const topics = useTopics(courseId);
+  const gradeCategories = useGradeCategories(courseId);
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<CreateQuizValues>({ resolver: zodResolver(createQuizSchema) });
+
+  function onSubmit(values: CreateQuizValues) {
+    createQuiz.mutate(
+      {
+        title: values.title,
+        description: values.description || undefined,
+        timeLimitMinutes: values.timeLimitMinutes ? Number(values.timeLimitMinutes) : undefined,
+        topicId: values.topicId === NO_TOPIC ? undefined : values.topicId,
+        gradeCategoryId: values.gradeCategoryId === NO_TOPIC ? undefined : values.gradeCategoryId,
+      },
+      {
+        // Question-building happens on the quiz's own detail page, not in this dialog -
+        // navigate there right after the quiz shell is created.
+        onSuccess: (quiz) => {
+          reset();
+          setOpen(false);
+          router.push(`/quizzes/${quiz.id}`);
+        },
+      },
+    );
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) reset();
+      }}
+    >
+      <DialogTrigger render={<Button variant="outline">New quiz</Button>} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New quiz</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="quiz-title">Title</Label>
+            <Input id="quiz-title" {...register("title")} />
+            {errors.title ? (
+              <p className="text-xs text-destructive">{errors.title.message}</p>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="quiz-description">Description (optional)</Label>
+            <Textarea id="quiz-description" rows={3} {...register("description")} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="quiz-time-limit">Time limit, minutes (optional)</Label>
+            <Input id="quiz-time-limit" type="number" min={1} {...register("timeLimitMinutes")} />
+            <p className="text-xs text-muted-foreground">
+              Leave blank for an untimed quiz. A timed quiz auto-submits when time runs out.
+            </p>
+          </div>
+          {topics.data && topics.data.length > 0 ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="quiz-topicId">Topic (optional)</Label>
+              <Controller
+                control={control}
+                name="topicId"
+                render={({ field }) => (
+                  <Select value={field.value ?? NO_TOPIC} onValueChange={field.onChange}>
+                    <SelectTrigger id="quiz-topicId" className="w-full">
+                      <SelectValue placeholder="No topic" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_TOPIC}>No topic</SelectItem>
+                      {topics.data?.map((topic) => (
+                        <SelectItem key={topic.id} value={topic.id}>
+                          {topic.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          ) : null}
+          {gradeCategories.data && gradeCategories.data.length > 0 ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="quiz-gradeCategoryId">Grade category (optional)</Label>
+              <Controller
+                control={control}
+                name="gradeCategoryId"
+                render={({ field }) => (
+                  <Select value={field.value ?? NO_TOPIC} onValueChange={field.onChange}>
+                    <SelectTrigger id="quiz-gradeCategoryId" className="w-full">
+                      <SelectValue placeholder="No category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_TOPIC}>No category</SelectItem>
+                      {gradeCategories.data?.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button type="submit" disabled={createQuiz.isPending}>
+              {createQuiz.isPending ? "Creating..." : "Create quiz"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function JoinCodeCard({ courseId, joinCode }: { courseId: string; joinCode: string | null }) {
   const regenerate = useRegenerateJoinCode(courseId);
 
@@ -314,6 +453,7 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
   const course = useCourse(id);
   const enrolled = useEnrolledStudents(id);
   const assignments = useCourseAssignments(id);
+  const quizzes = useCourseQuizzes(id);
   const removeStudent = useRemoveStudent(id);
 
   if (course.isLoading) {
@@ -415,6 +555,28 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           <Card>
             <CardContent>
               <p className="text-sm text-muted-foreground">No assignments yet.</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-medium text-foreground">Quizzes</h2>
+          {!archived ? <NewQuizDialog courseId={id} /> : null}
+        </div>
+        {quizzes.isLoading ? (
+          <Skeleton className="h-16 w-full" />
+        ) : quizzes.data && quizzes.data.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {quizzes.data.map((quiz) => (
+              <QuizCard key={quiz.id} quiz={quiz} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">No quizzes yet.</p>
             </CardContent>
           </Card>
         )}

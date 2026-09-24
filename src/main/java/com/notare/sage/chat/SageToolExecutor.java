@@ -22,6 +22,10 @@ import com.notare.gradecategory.dto.UpdateGradeCategoryRequest;
 import com.notare.material.MaterialService;
 import com.notare.material.dto.CreateMaterialRequest;
 import com.notare.material.dto.MaterialResponse;
+import com.notare.quizattempt.QuizAttempt;
+import com.notare.quizattempt.QuizAttemptRepository;
+import com.notare.quizattempt.QuizAttemptService;
+import com.notare.quizattempt.dto.QuizAttemptResponse;
 import com.notare.rubric.Rubric;
 import com.notare.rubric.RubricCriterion;
 import com.notare.rubric.RubricCriterionRepository;
@@ -76,7 +80,8 @@ public class SageToolExecutor {
             "release_feedback", "schedule_session", "complete_session", "post_announcement",
             "update_course", "create_assignment", "create_material", "create_topic", "rename_topic",
             "create_grade_category", "update_grade_category", "save_session_notes",
-            "update_rubric_scores", "draft_session_notes", "review_submission"
+            "update_rubric_scores", "draft_session_notes", "review_submission",
+            "draft_quiz_answer_feedback", "release_quiz_attempt"
     );
 
     private final CourseRepository courseRepository;
@@ -100,6 +105,8 @@ public class SageToolExecutor {
     private final GradeCategoryRepository gradeCategoryRepository;
     private final RubricCriterionRepository rubricCriterionRepository;
     private final RubricRepository rubricRepository;
+    private final QuizAttemptRepository quizAttemptRepository;
+    private final QuizAttemptService quizAttemptService;
 
     public SageToolExecutor(
             CourseRepository courseRepository,
@@ -122,7 +129,9 @@ public class SageToolExecutor {
             TopicRepository topicRepository,
             GradeCategoryRepository gradeCategoryRepository,
             RubricCriterionRepository rubricCriterionRepository,
-            RubricRepository rubricRepository
+            RubricRepository rubricRepository,
+            QuizAttemptRepository quizAttemptRepository,
+            QuizAttemptService quizAttemptService
     ) {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -145,6 +154,8 @@ public class SageToolExecutor {
         this.gradeCategoryRepository = gradeCategoryRepository;
         this.rubricCriterionRepository = rubricCriterionRepository;
         this.rubricRepository = rubricRepository;
+        this.quizAttemptRepository = quizAttemptRepository;
+        this.quizAttemptService = quizAttemptService;
     }
 
     public String execute(String toolName, Map<String, Object> input, User tutor) {
@@ -182,6 +193,8 @@ public class SageToolExecutor {
             case "update_rubric_scores" -> updateRubricScores(input, tutor);
             case "draft_session_notes" -> draftSessionNotes(input, tutor);
             case "review_submission" -> reviewSubmission(input, tutor);
+            case "draft_quiz_answer_feedback" -> draftQuizAnswerFeedback(input, tutor);
+            case "release_quiz_attempt" -> releaseQuizAttempt(input, tutor);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown tool: " + toolName);
         };
         return toJson(result);
@@ -295,6 +308,17 @@ public class SageToolExecutor {
                 yield "Ask Sage to generate AI feedback for " + submission.getStudent().getName()
                         + "'s submission on \"" + submission.getAssignment().getTitle()
                         + "\" (not visible to the student until you release it)." + overwriteClause;
+            }
+            case "draft_quiz_answer_feedback" -> {
+                QuizAttempt attempt = requireOwnedQuizAttempt(uuidParam(input, "attemptId"), tutor);
+                yield "Ask Sage to draft a suggested score and feedback for " + attempt.getStudent().getName()
+                        + "'s answer on quiz \"" + attempt.getQuiz().getTitle()
+                        + "\" (not visible to the student until you release the attempt).";
+            }
+            case "release_quiz_attempt" -> {
+                QuizAttempt attempt = requireOwnedQuizAttempt(uuidParam(input, "attemptId"), tutor);
+                yield "Release quiz results for " + attempt.getStudent().getName()
+                        + "'s attempt on \"" + attempt.getQuiz().getTitle() + "\".";
             }
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown write tool: " + toolName);
         };
@@ -515,6 +539,15 @@ public class SageToolExecutor {
         return sageService.reviewSubmission(uuidParam(input, "submissionId"), tutor.getEmail());
     }
 
+    private QuizAttemptResponse draftQuizAnswerFeedback(Map<String, Object> input, User tutor) {
+        return sageService.draftQuizAnswerFeedback(
+                uuidParam(input, "attemptId"), uuidParam(input, "questionId"), tutor.getEmail());
+    }
+
+    private QuizAttemptResponse releaseQuizAttempt(Map<String, Object> input, User tutor) {
+        return quizAttemptService.releaseAttempt(uuidParam(input, "attemptId"), tutor.getEmail());
+    }
+
     private String describeScores(Submission submission, List<Map<String, Object>> scores) {
         Rubric rubric = rubricRepository.findByAssignmentId(submission.getAssignment().getId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "This assignment has no rubric"));
@@ -576,6 +609,15 @@ public class SageToolExecutor {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Submission not found");
         }
         return submission;
+    }
+
+    private QuizAttempt requireOwnedQuizAttempt(UUID attemptId, User tutor) {
+        QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Attempt not found"));
+        if (!attempt.getQuiz().getCourse().getTutor().getId().equals(tutor.getId())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Attempt not found");
+        }
+        return attempt;
     }
 
     private Session requireOwnedSession(UUID sessionId, User tutor) {
