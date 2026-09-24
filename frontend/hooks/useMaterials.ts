@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type ApiEnvelope } from "@/lib/api";
-import type { Material } from "@/types/material";
+import type { Material, MaterialType } from "@/types/material";
 
 export const materialKeys = {
   forCourse: (courseId: string) => ["courses", courseId, "materials"] as const,
@@ -41,6 +41,7 @@ export interface CreateMaterialInput {
   description?: string;
   url?: string;
   topicId?: string;
+  type: MaterialType;
 }
 
 export function useCreateMaterial(courseId: string) {

@@ -1,6 +1,7 @@
 package com.notare.material.dto;
 
 import com.notare.material.Material;
+import com.notare.material.MaterialType;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -13,6 +14,7 @@ public record MaterialResponse(
         String title,
         String description,
         String url,
+        MaterialType type,
         LocalDateTime createdAt
 ) {
     public static MaterialResponse from(Material material) {
@@ -24,6 +26,7 @@ public record MaterialResponse(
                 material.getTitle(),
                 material.getDescription(),
                 material.getUrl(),
+                material.getType(),
                 material.getCreatedAt()
         );
     }
