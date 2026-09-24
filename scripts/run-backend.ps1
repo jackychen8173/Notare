@@ -10,5 +10,9 @@ $env:DATABASE_USERNAME = "notare"
 $env:DATABASE_PASSWORD = "changeme"
 $env:JWT_SECRET = "local-dev-secret-key-not-for-production-use-only-abcdefghijklmnop"
 $env:CORS_ALLOWED_ORIGINS = "http://localhost:3000"
+# Required at startup (no defaults). Dummy values are enough to boot; real Google sign-in and
+# code-run need the real values (see CLAUDE.md).
+$env:GOOGLE_OAUTH_CLIENT_ID = "local-dev-dummy.apps.googleusercontent.com"
+$env:CODE_RUN_INTERNAL_SECRET = "local-dev-dummy-secret"
 
 & .\mvnw.cmd spring-boot:run

@@ -11,6 +11,7 @@ import { AnnouncementsSection } from "@/components/course/AnnouncementsSection";
 import { GradeCategoriesManager } from "@/components/course/GradeCategoriesManager";
 import { MaterialsSection } from "@/components/course/MaterialsSection";
 import { TopicsManager } from "@/components/course/TopicsManager";
+import { DiscussionsSection } from "@/components/discussion/DiscussionsSection";
 import { QuizCard } from "@/components/quiz/QuizCard";
 import { StudentRow } from "@/components/student/StudentRow";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -589,6 +590,8 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
       <GradeCategoriesManager courseId={id} editable={!archived} />
 
       <AnnouncementsSection courseId={id} editable={!archived} />
+
+      <DiscussionsSection scope="tutor" courseId={id} archived={archived} />
     </div>
   );
 }

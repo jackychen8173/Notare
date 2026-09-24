@@ -5,6 +5,7 @@ import { use } from "react";
 import { AssignmentCard } from "@/components/assignment/AssignmentCard";
 import { StudentAnnouncementsSection } from "@/components/course/AnnouncementsSection";
 import { StudentMaterialsSection } from "@/components/course/MaterialsSection";
+import { DiscussionsSection } from "@/components/discussion/DiscussionsSection";
 import { QuizCard } from "@/components/quiz/QuizCard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -86,6 +87,8 @@ export default function StudentCourseDetailPage({ params }: { params: Promise<{ 
       <StudentMaterialsSection courseId={id} />
 
       <StudentAnnouncementsSection courseId={id} />
+
+      <DiscussionsSection scope="student" courseId={id} archived={course.data.archivedAt !== null} />
     </div>
   );
 }
