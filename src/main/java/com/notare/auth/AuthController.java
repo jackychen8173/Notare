@@ -2,6 +2,7 @@ package com.notare.auth;
 
 import com.notare.auth.dto.AuthResponse;
 import com.notare.auth.dto.GoogleAuthRequest;
+import com.notare.auth.dto.GoogleAuthResult;
 import com.notare.auth.dto.LoginRequest;
 import com.notare.auth.dto.RegisterRequest;
 import com.notare.common.ApiResponse;
@@ -35,15 +36,9 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    @PostMapping("/google/register")
-    public ResponseEntity<ApiResponse<AuthResponse>> registerWithGoogle(@Valid @RequestBody GoogleAuthRequest request) {
-        AuthResponse response = authService.registerWithGoogle(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
-    }
-
-    @PostMapping("/google/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> loginWithGoogle(@Valid @RequestBody GoogleAuthRequest request) {
-        AuthResponse response = authService.loginWithGoogle(request);
-        return ResponseEntity.ok(ApiResponse.success(response));
+    @PostMapping("/google")
+    public ResponseEntity<ApiResponse<GoogleAuthResult>> authenticateWithGoogle(@Valid @RequestBody GoogleAuthRequest request) {
+        GoogleAuthResult result = authService.authenticateWithGoogle(request);
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 }
