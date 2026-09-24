@@ -7,6 +7,13 @@ import com.anthropic.models.messages.StructuredMessageCreateParams;
 import com.anthropic.models.messages.TextBlock;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.notare.quiz.QuestionType;
+import com.notare.quizattempt.QuizAnswer;
+import com.notare.quizattempt.QuizAnswerRepository;
+import com.notare.quizattempt.QuizAttempt;
+import com.notare.quizattempt.QuizAttemptRepository;
+import com.notare.quizattempt.QuizAttemptService;
+import com.notare.quizattempt.dto.QuizAttemptResponse;
 import com.notare.sage.dto.PendingReviewsResponse;
 import com.notare.sage.dto.ProgressSummaryResponse;
 import com.notare.session.Session;
@@ -56,6 +63,15 @@ public class SageService {
             list of the student's tutoring sessions and assignment submissions, write a concise 2-4 sentence \
             progress summary highlighting trends, strengths, and any areas needing attention.""";
 
+    private static final String QUIZ_ANSWER_FEEDBACK_SYSTEM_PROMPT = """
+            You are Sage, an AI teaching assistant embedded in a tutoring platform. Grade a student's \
+            free-text answer to a quiz question. You are given the question prompt, how many points it's \
+            worth, the tutor's reference answer or grading guide (if one was provided), and the student's \
+            answer. Suggest a point score (a number between 0 and the points possible, fractional points are \
+            fine) and write brief, specific feedback explaining the score. This is a draft for the tutor to \
+            review, edit, and approve before it's ever shown to the student - be honest and specific rather \
+            than generically generous.""";
+
     private final AnthropicClient anthropicClient;
     private final ObjectMapper objectMapper;
     private final SessionRepository sessionRepository;
@@ -63,6 +79,9 @@ public class SageService {
     private final SubmissionRepository submissionRepository;
     private final SubmissionCriterionScoreRepository criterionScoreRepository;
     private final UserRepository userRepository;
+    private final QuizAttemptRepository quizAttemptRepository;
+    private final QuizAnswerRepository quizAnswerRepository;
+    private final QuizAttemptService quizAttemptService;
 
     public SageService(
             AnthropicClient anthropicClient,
@@ -71,7 +90,10 @@ public class SageService {
             SessionNoteRepository sessionNoteRepository,
             SubmissionRepository submissionRepository,
             SubmissionCriterionScoreRepository criterionScoreRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            QuizAttemptRepository quizAttemptRepository,
+            QuizAnswerRepository quizAnswerRepository,
+            QuizAttemptService quizAttemptService
     ) {
         this.anthropicClient = anthropicClient;
         this.objectMapper = objectMapper;
@@ -80,6 +102,9 @@ public class SageService {
         this.submissionRepository = submissionRepository;
         this.criterionScoreRepository = criterionScoreRepository;
         this.userRepository = userRepository;
+        this.quizAttemptRepository = quizAttemptRepository;
+        this.quizAnswerRepository = quizAnswerRepository;
+        this.quizAttemptService = quizAttemptService;
     }
 
     public SessionNoteResponse draftSessionNotes(UUID sessionId, String tutorEmail) {
@@ -98,7 +123,7 @@ public class SageService {
     public SubmissionResponse reviewSubmission(UUID submissionId, String tutorEmail) {
         Submission submission = requireOwnedSubmission(submissionId, tutorEmail);
 
-        SageFeedback feedback = completeStructured(FEEDBACK_SYSTEM_PROMPT, submission.getContent());
+        SageFeedback feedback = completeStructured(FEEDBACK_SYSTEM_PROMPT, submission.getContent(), SageFeedback.class);
         submission.setSageFeedback(toJson(feedback));
         submissionRepository.save(submission);
 
@@ -112,6 +137,48 @@ public class SageService {
                 .toList();
 
         return SubmissionResponse.from(submission, rubricScores);
+    }
+
+    /**
+     * Drafts a suggested score/feedback for one SHORT_ANSWER/ESSAY quiz answer, stored on
+     * QuizAnswer.sageSuggestion - never shown to the student until the tutor releases the attempt
+     * (same trust boundary as reviewSubmission's sageFeedback). Ownership of the attempt is checked
+     * here, before any write, rather than only relying on quizAttemptService.getAttempt's own check
+     * at the end - see requireOwnedQuizAttempt.
+     */
+    public QuizAttemptResponse draftQuizAnswerFeedback(UUID attemptId, UUID questionId, String tutorEmail) {
+        QuizAttempt attempt = requireOwnedQuizAttempt(attemptId, tutorEmail);
+
+        QuizAnswer answer = quizAnswerRepository.findByAttemptIdAndQuestionId(attempt.getId(), questionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "No answer for this question on this attempt"));
+
+        QuestionType type = answer.getQuestion().getType();
+        if (type != QuestionType.SHORT_ANSWER && type != QuestionType.ESSAY) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Sage can only draft feedback for short answer or essay questions");
+        }
+
+        QuizAnswerFeedback feedback = completeStructured(
+                QUIZ_ANSWER_FEEDBACK_SYSTEM_PROMPT, buildQuizAnswerPrompt(answer), QuizAnswerFeedback.class);
+        answer.setSageSuggestion(toJson(feedback));
+        quizAnswerRepository.save(answer);
+
+        return quizAttemptService.getAttempt(attemptId, tutorEmail);
+    }
+
+    private String buildQuizAnswerPrompt(QuizAnswer answer) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Question: ").append(answer.getQuestion().getPrompt()).append("\n");
+        prompt.append("Points possible: ").append(answer.getQuestion().getPointsPossible()).append("\n");
+        if (answer.getQuestion().getReferenceAnswer() != null && !answer.getQuestion().getReferenceAnswer().isBlank()) {
+            prompt.append("Tutor's reference answer / grading guide: ")
+                    .append(answer.getQuestion().getReferenceAnswer()).append("\n");
+        }
+        prompt.append("Student's answer: ").append(
+                answer.getTextResponse() != null && !answer.getTextResponse().isBlank()
+                        ? answer.getTextResponse() : "(left blank)");
+        return prompt.toString();
     }
 
     @Transactional(readOnly = true)
@@ -191,12 +258,12 @@ public class SageService {
                 .strip();
     }
 
-    private SageFeedback completeStructured(String systemPrompt, String userMessage) {
-        StructuredMessageCreateParams<SageFeedback> params = MessageCreateParams.builder()
+    private <T> T completeStructured(String systemPrompt, String userMessage, Class<T> outputType) {
+        StructuredMessageCreateParams<T> params = MessageCreateParams.builder()
                 .model(MODEL)
                 .maxTokens(2048L)
                 .system(systemPrompt)
-                .outputConfig(SageFeedback.class)
+                .outputConfig(outputType)
                 .addUserMessage(userMessage)
                 .build();
 
@@ -208,9 +275,9 @@ public class SageService {
         return block.text();
     }
 
-    private String toJson(SageFeedback feedback) {
+    private String toJson(Object value) {
         try {
-            return objectMapper.writeValueAsString(feedback);
+            return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to serialize Sage feedback", e);
         }
@@ -245,5 +312,18 @@ public class SageService {
         }
 
         return submission;
+    }
+
+    private QuizAttempt requireOwnedQuizAttempt(UUID attemptId, String tutorEmail) {
+        User tutor = requireTutor(tutorEmail);
+        QuizAttempt attempt = quizAttemptRepository.findById(attemptId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Attempt not found"));
+
+        if (!attempt.getQuiz().getCourse().getTutor().getId().equals(tutor.getId())) {
+            // 404, not 403 - avoid confirming another tutor's attempt exists
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Attempt not found");
+        }
+
+        return attempt;
     }
 }
