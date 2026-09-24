@@ -8,6 +8,7 @@ import axios from "axios";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -106,6 +107,14 @@ export default function LoginPage() {
             <Button type="submit" disabled={isSubmitting} className="mt-2 w-full">
               {isSubmitting ? "Signing in..." : "Sign in"}
             </Button>
+
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border" />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            <GoogleSignInButton endpoint="/api/auth/google/login" />
 
             <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
