@@ -1,3 +1,5 @@
+export type MaterialType = "LINK" | "GOOGLE_DOC" | "GOOGLE_SLIDES" | "PDF";
+
 export interface Material {
   id: string;
   courseId: string;
@@ -6,5 +8,6 @@ export interface Material {
   title: string;
   description: string | null;
   url: string | null;
+  type: MaterialType;
   createdAt: string;
 }
