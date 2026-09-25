@@ -25,6 +25,8 @@ docker run -d --name notare-local-pg \
 
 Credentials: user `notare` / password `changeme` / db `notare`.
 
+**If `docker start` fails with `bind: An attempt was made to access a socket in a way forbidden by its access permissions`**: Windows (Hyper-V/WinNAT) reserves TCP port ranges at boot, and those ranges move between reboots. Check with `netsh int ipv4 show excludedportrange protocol=tcp`. On 2026-09-24, 55318–56117 was reserved, which covers 55432. Workaround: run a second disposable container on a free port (e.g. `-p 45432:5432`, name `notare-discussions-pg`) and point `DATABASE_URL` at that port.
+
 ## 2. Backend (Spring Boot, JDK 21)
 
 The system default JDK is 19 — must override `JAVA_HOME` to the JDK 21 install for this repo (per `CLAUDE.md`, Spring Boot 4.1 requires Java 21):
@@ -36,8 +38,12 @@ export DATABASE_USERNAME="notare"
 export DATABASE_PASSWORD="changeme"
 export JWT_SECRET="local-dev-secret-key-not-for-production-use-only-abcdefghijklmnop"
 export CORS_ALLOWED_ORIGINS="http://localhost:3000"
+export GOOGLE_OAUTH_CLIENT_ID="local-dev-dummy.apps.googleusercontent.com"
+export CODE_RUN_INTERNAL_SECRET="local-dev-dummy-secret"
 ./mvnw.cmd spring-boot:run
 ```
+
+`GOOGLE_OAUTH_CLIENT_ID` and `CODE_RUN_INTERNAL_SECRET` have no defaults in `application.properties`, so the app refuses to start without them. The dummy values above are enough to boot; real Google sign-in and code-run need the real values.
 
 Runs on `http://localhost:8080`. Flyway auto-migrates on startup (harmless against this disposable local DB — the repo-wide "no DB mutation" safety harness is about production/shared databases). Swagger UI at `/swagger-ui.html`.
 
