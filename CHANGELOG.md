@@ -2,6 +2,11 @@
 
 Notable changes to this project, most recent first. See `CLAUDE.md` for when to add an entry.
 
+## 2026-09-25
+
+- **`@PreAuthorize` role denials now return 403, not 500.** This fixes the app-wide bug found during the 2026-09-24 (4) discussions testing. `GlobalExceptionHandler` gets a dedicated `@ExceptionHandler(AccessDeniedException.class)`, which covers Spring Security 7's `AuthorizationDeniedException`. The handler returns 403 with the body `"Access denied"`. The exception is thrown inside the controller call, so it reaches the `@RestControllerAdvice` before Spring Security's filter sees it, and the catch-all `Exception` handler was turning it into a 500. Verified against a live local backend + Postgres: a STUDENT calling `GET /api/courses` (tutor-only) gets 403 (it was 500), and an unauthenticated call still gets 401.
+- CLAUDE.md: marked course discussions (#17) as deployed and updated the production-tip note.
+
 ## 2026-09-24 (4)
 
 - **Course discussions (forum + private messages to the tutor).** Scoped with the user first. One thread model with a `visibility` flag rather than two systems: PUBLIC threads are readable by the course's tutor and every enrolled student; PRIVATE threads only by the student who started them and the tutor (student-initiated only, no tutor→student DMs in v1). Students can post publicly as "Anonymous to classmates"; the tutor always sees the real name. The tutor can pin/lock/delete threads, delete any reply, and **make a private thread public, which automatically flips that student's opening post and replies to anonymous** so a name shared only with the tutor is never exposed to classmates (agreed with the user). Unread badges per thread and per course. Out of scope for v1: Sage involvement, admin-portal oversight.
