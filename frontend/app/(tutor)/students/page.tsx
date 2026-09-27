@@ -1,5 +1,8 @@
 "use client";
 
+import { IconUsers } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StudentRow } from "@/components/student/StudentRow";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,7 +41,7 @@ export default function StudentsPage() {
           </TableBody>
         </Table>
       ) : (
-        <p className="text-sm text-muted-foreground">No students yet.</p>
+        <EmptyState icon={IconUsers} title="No students yet" description="Add a student to schedule sessions and track their progress." />
       )}
     </>
   );

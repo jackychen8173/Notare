@@ -5,6 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { IconChecklist } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -153,7 +156,7 @@ export function RubricPanel({ assignmentId }: { assignmentId: string }) {
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-medium text-foreground">Rubric</h2>
+        <h2 className="text-lg font-semibold text-foreground">Rubric</h2>
         {!rubric.data ? <NewRubricDialog assignmentId={assignmentId} /> : null}
       </div>
       {rubric.data ? (
@@ -181,11 +184,7 @@ export function RubricPanel({ assignmentId }: { assignmentId: string }) {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No rubric yet.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={IconChecklist} title="No rubric yet" />
       )}
     </div>
   );

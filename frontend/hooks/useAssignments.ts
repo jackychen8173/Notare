@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type ApiEnvelope } from "@/lib/api";
 import type { Assignment } from "@/types/assignment";
@@ -39,6 +39,23 @@ export function useCourseAssignments(courseId: string) {
     queryKey: assignmentKeys.forCourse(courseId),
     queryFn: () => fetchCourseAssignments(courseId),
     enabled: !!courseId,
+  });
+}
+
+/**
+ * Assignments across several courses at once (dashboards), sharing each course's cache entry with
+ * the course page. `mine` switches to the student-facing endpoints.
+ */
+export function useAssignmentsForCourses(courseIds: string[], mine = false) {
+  return useQueries({
+    queries: courseIds.map((courseId) => ({
+      queryKey: mine ? assignmentKeys.forMyCourse(courseId) : assignmentKeys.forCourse(courseId),
+      queryFn: () => (mine ? fetchMyCourseAssignments(courseId) : fetchCourseAssignments(courseId)),
+    })),
+    combine: (results) => ({
+      data: results.flatMap((result) => result.data ?? []),
+      isLoading: results.some((result) => result.isLoading),
+    }),
   });
 }
 

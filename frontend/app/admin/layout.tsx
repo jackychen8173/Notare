@@ -2,8 +2,7 @@
 
 import { IconBook2, IconLayoutDashboard, IconUsers } from "@tabler/icons-react";
 
-import { Sidebar } from "@/components/layout/Sidebar";
-import { TopNav } from "@/components/layout/TopNav";
+import { AppShell } from "@/components/layout/AppShell";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 const navItems = [
@@ -17,12 +16,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!authorized) return null;
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar items={navItems} />
-      <div className="flex flex-1 flex-col">
-        <TopNav profileHref="/admin/profile" />
-        <main className="flex-1 p-8">{children}</main>
-      </div>
-    </div>
+    <AppShell navItems={navItems} profileHref="/admin/profile">
+      {children}
+    </AppShell>
   );
 }

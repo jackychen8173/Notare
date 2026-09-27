@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type ApiEnvelope } from "@/lib/api";
-import type { Course } from "@/types/course";
+import type { Course, CourseColor } from "@/types/course";
 import type { Student } from "@/types/user";
 
 export const courseKeys = {
@@ -40,16 +40,20 @@ async function fetchMyCourse(id: string): Promise<Course> {
   return res.data.data;
 }
 
-export function useCourses(archived = false) {
-  return useQuery({ queryKey: courseKeys.list(archived), queryFn: () => fetchCourses(archived) });
+export function useCourses(archived = false, options: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: courseKeys.list(archived),
+    queryFn: () => fetchCourses(archived),
+    enabled: options.enabled ?? true,
+  });
 }
 
 export function useCourse(id: string) {
   return useQuery({ queryKey: courseKeys.detail(id), queryFn: () => fetchCourse(id), enabled: !!id });
 }
 
-export function useMyCourses() {
-  return useQuery({ queryKey: courseKeys.mine, queryFn: fetchMyCourses });
+export function useMyCourses(options: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: courseKeys.mine, queryFn: fetchMyCourses, enabled: options.enabled ?? true });
 }
 
 export function useMyCourse(id: string) {
@@ -87,6 +91,19 @@ export function useCreateCourse() {
   });
 }
 
+export function useDuplicateCourse(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await api.post<ApiEnvelope<Course>>(`/api/courses/${courseId}/duplicate`, { name });
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.all });
+    },
+  });
+}
+
 export function useRemoveStudent(courseId: string) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -116,6 +133,7 @@ export interface UpdateCourseInput {
   name: string;
   subject: string;
   description?: string;
+  color?: CourseColor;
 }
 
 export function useUpdateCourse(courseId: string) {

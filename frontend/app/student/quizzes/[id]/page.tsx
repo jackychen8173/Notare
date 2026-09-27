@@ -3,6 +3,7 @@
 import { use } from "react";
 import { useRouter } from "next/navigation";
 
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,7 +47,14 @@ export default function StudentQuizDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-medium text-foreground">{quiz.data.title}</h1>
+        <Breadcrumbs
+          items={[
+            { label: "Courses", href: "/student/courses" },
+            { label: quiz.data.courseName, href: `/student/courses/${quiz.data.courseId}?tab=classwork` },
+            { label: quiz.data.title },
+          ]}
+        />
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{quiz.data.title}</h1>
         <p className="text-sm text-muted-foreground">
           {quiz.data.courseName}
           {quiz.data.timeLimitMinutes ? ` · ${quiz.data.timeLimitMinutes} min, hard cutoff` : " · Untimed"}

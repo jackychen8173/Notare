@@ -2,9 +2,9 @@
 
 import { IconBook2, IconLayoutDashboard, IconMessageChatbot, IconUsers } from "@tabler/icons-react";
 
-import { Sidebar } from "@/components/layout/Sidebar";
-import { TopNav } from "@/components/layout/TopNav";
+import { AppShell } from "@/components/layout/AppShell";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useCourses } from "@/hooks/useCourses";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
@@ -15,15 +15,12 @@ const navItems = [
 
 export default function TutorLayout({ children }: { children: React.ReactNode }) {
   const authorized = useAuthGuard("TUTOR");
+  const courses = useCourses(false, { enabled: authorized });
   if (!authorized) return null;
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar items={navItems} />
-      <div className="flex flex-1 flex-col">
-        <TopNav profileHref="/profile" />
-        <main className="flex-1 p-8">{children}</main>
-      </div>
-    </div>
+    <AppShell navItems={navItems} courses={{ basePath: "/courses", items: courses.data }} profileHref="/profile">
+      {children}
+    </AppShell>
   );
 }

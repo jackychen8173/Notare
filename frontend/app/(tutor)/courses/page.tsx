@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { IconBook2 } from "@tabler/icons-react";
 import { z } from "zod";
 
+import { CourseCard } from "@/components/course/CourseCard";
+import { EmptyState } from "@/components/layout/EmptyState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -103,38 +104,51 @@ export default function CoursesPage() {
         actions={<NewCourseDialog />}
       />
 
-      <div className="flex gap-2">
-        <Button variant={archived ? "outline" : "default"} size="sm" onClick={() => setArchived(false)}>
-          Active
-        </Button>
-        <Button variant={archived ? "default" : "outline"} size="sm" onClick={() => setArchived(true)}>
-          Archived
-        </Button>
+      <div className="mb-6 inline-flex rounded-lg bg-muted p-1">
+        {[false, true].map((value) => (
+          <button
+            key={String(value)}
+            type="button"
+            onClick={() => setArchived(value)}
+            className={
+              archived === value
+                ? "rounded-md bg-card px-3 py-1 text-sm font-medium text-foreground shadow-xs"
+                : "rounded-md px-3 py-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+            }
+          >
+            {value ? "Archived" : "Active"}
+          </button>
+        ))}
       </div>
 
       {courses.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-40 w-full rounded-card" />
+          <Skeleton className="h-40 w-full rounded-card" />
+          <Skeleton className="h-40 w-full rounded-card" />
         </div>
       ) : courses.data && courses.data.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {courses.data.map((course) => (
-            <Link key={course.id} href={`/courses/${course.id}`}>
-              <Card className="transition-colors hover:bg-muted/40">
-                <CardContent>
-                  <p className="font-medium text-foreground">{course.name}</p>
-                  <p className="text-sm text-muted-foreground">{course.subject}</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <CourseCard
+              key={course.id}
+              course={course}
+              href={`/courses/${course.id}`}
+              footer={course.joinCode ? <>Join code <span className="font-mono tracking-wider text-foreground">{course.joinCode}</span></> : null}
+            />
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          {archived ? "No archived courses." : "No courses yet."}
-        </p>
+        <EmptyState
+          icon={IconBook2}
+          title={archived ? "No archived courses" : "No courses yet"}
+          description={
+            archived
+              ? "Courses you archive show up here, read-only."
+              : "Create a course for each class or section you teach. Students join with its code."
+          }
+          action={archived ? undefined : <NewCourseDialog />}
+        />
       )}
     </>
   );

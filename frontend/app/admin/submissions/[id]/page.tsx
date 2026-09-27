@@ -25,7 +25,7 @@ export default function AdminSubmissionDetailPage({ params }: { params: Promise<
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-medium text-foreground">Submission</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Submission</h1>
       <AdminSubmissionDetail submission={submission.data} />
     </div>
   );
