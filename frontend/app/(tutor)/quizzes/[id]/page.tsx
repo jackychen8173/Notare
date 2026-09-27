@@ -6,6 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { IconListCheck } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { QUESTION_TYPE_LABELS, QuestionFormDialog } from "@/components/quiz/QuestionFormDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -247,11 +251,7 @@ function AttemptsList({ quizId }: { quizId: string }) {
 
   if (!attempts.data || attempts.data.length === 0) {
     return (
-      <Card>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">No attempts yet.</p>
-        </CardContent>
-      </Card>
+      <EmptyState icon={IconListCheck} title="No attempts yet" description="Attempts appear here once students take the quiz." />
     );
   }
 
@@ -259,7 +259,7 @@ function AttemptsList({ quizId }: { quizId: string }) {
     <div className="flex flex-col gap-2">
       {attempts.data.map((attempt) => (
         <Link key={attempt.id} href={`/quiz-attempts/${attempt.id}/review`}>
-          <Card className="transition-colors hover:bg-muted/40">
+          <Card className="transition-all hover:-translate-y-px hover:shadow-elevated">
             <CardContent className="flex items-center justify-between gap-4">
               <div>
                 <p className="font-medium text-foreground">{attempt.studentName}</p>
@@ -308,8 +308,15 @@ export default function QuizDetailPage({ params }: { params: Promise<{ id: strin
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
+          <Breadcrumbs
+            items={[
+              { label: "Courses", href: "/courses" },
+              { label: quiz.data.courseName, href: `/courses/${quiz.data.courseId}?tab=classwork` },
+              { label: quiz.data.title },
+            ]}
+          />
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-medium text-foreground">{quiz.data.title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{quiz.data.title}</h1>
             <Badge variant={quiz.data.publishedAt ? "default" : "secondary"}>
               {quiz.data.publishedAt ? "Published" : "Draft"}
             </Badge>
@@ -332,7 +339,7 @@ export default function QuizDetailPage({ params }: { params: Promise<{ id: strin
 
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-foreground">Questions</h2>
+          <h2 className="text-lg font-semibold text-foreground">Questions</h2>
           <QuestionFormDialog
             quizId={id}
             trigger={<Button variant="outline">Add question</Button>}
@@ -356,7 +363,7 @@ export default function QuizDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-medium text-foreground">Attempts</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">Attempts</h2>
         <AttemptsList quizId={id} />
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { use } from "react";
 
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { SubmissionForm } from "@/components/assignment/SubmissionForm";
 import { RubricView } from "@/components/rubric/RubricView";
 import { SageFeedbackBlock } from "@/components/sage/SageFeedbackBlock";
@@ -11,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMyAssignment } from "@/hooks/useAssignments";
 import { useMySubmission } from "@/hooks/useSubmissions";
 import type { FeedbackStatus } from "@/types/submission";
+import { formatDueDate } from "@/lib/dates";
 
 const statusVariant: Record<FeedbackStatus, "default" | "secondary"> = {
   PENDING: "secondary",
@@ -43,10 +45,17 @@ export default function StudentAssignmentDetailPage({
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-medium text-foreground">{assignment.data.title}</h1>
+        <Breadcrumbs
+          items={[
+            { label: "Courses", href: "/student/courses" },
+            { label: assignment.data.courseName, href: `/student/courses/${assignment.data.courseId}?tab=classwork` },
+            { label: assignment.data.title },
+          ]}
+        />
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{assignment.data.title}</h1>
         <p className="text-sm text-muted-foreground">
           {assignment.data.courseName} · Due{" "}
-          {new Date(assignment.data.dueDate).toLocaleDateString()}
+          {formatDueDate(assignment.data.dueDate)}
         </p>
         {assignment.data.description ? (
           <p className="mt-2 text-sm text-muted-foreground">{assignment.data.description}</p>

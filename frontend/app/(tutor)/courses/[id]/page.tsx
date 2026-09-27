@@ -1,18 +1,24 @@
 "use client";
 
-import { use, useState } from "react";
+import { Suspense, use, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { IconCheck, IconCopy, IconRefresh, IconUsers } from "@tabler/icons-react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
-import { AssignmentCard } from "@/components/assignment/AssignmentCard";
 import { AnnouncementsSection } from "@/components/course/AnnouncementsSection";
+import { ClassworkByTopic } from "@/components/course/ClassworkByTopic";
+import { CourseBanner } from "@/components/course/CourseBanner";
+import { CourseColorPicker } from "@/components/course/CourseColorPicker";
+import { CourseTabs, useCourseTab, type CourseTab } from "@/components/course/CourseTabs";
 import { GradeCategoriesManager } from "@/components/course/GradeCategoriesManager";
 import { MaterialsSection } from "@/components/course/MaterialsSection";
 import { TopicsManager } from "@/components/course/TopicsManager";
+import { UpcomingCard } from "@/components/course/UpcomingCard";
 import { DiscussionsSection } from "@/components/discussion/DiscussionsSection";
-import { QuizCard } from "@/components/quiz/QuizCard";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { EmptyState } from "@/components/layout/EmptyState";
 import { StudentRow } from "@/components/student/StudentRow";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -31,8 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import type { Assignment } from "@/types/assignment";
-import type { Course } from "@/types/course";
+import { COURSE_COLORS, type Course } from "@/types/course";
 import { useCreateAssignment, useCourseAssignments } from "@/hooks/useAssignments";
 import {
   useArchiveCourse,
@@ -44,6 +49,7 @@ import {
   useUnarchiveCourse,
   useUpdateCourse,
 } from "@/hooks/useCourses";
+import { useDiscussionThreads } from "@/hooks/useDiscussions";
 import { useGradeCategories } from "@/hooks/useGradeCategories";
 import { useCourseQuizzes, useCreateQuiz } from "@/hooks/useQuizzes";
 import { useTopics } from "@/hooks/useTopics";
@@ -52,27 +58,12 @@ const editCourseSchema = z.object({
   name: z.string().min(1, "Name is required"),
   subject: z.string().min(1, "Subject is required"),
   description: z.string().optional(),
+  color: z.enum(COURSE_COLORS as [Course["color"], ...Course["color"][]]),
 });
 
 type EditCourseValues = z.infer<typeof editCourseSchema>;
 
 const NO_TOPIC = "__none__";
-
-function groupAssignmentsByTopic(assignments: Assignment[]): [string, Assignment[]][] {
-  const groups = new Map<string, Assignment[]>();
-  for (const assignment of assignments) {
-    const key = assignment.topicName ?? "Ungrouped";
-    const existing = groups.get(key);
-    if (existing) {
-      existing.push(assignment);
-    } else {
-      groups.set(key, [assignment]);
-    }
-  }
-  const entries = [...groups.entries()];
-  entries.sort((a, b) => (a[0] === "Ungrouped" ? 1 : b[0] === "Ungrouped" ? -1 : 0));
-  return entries;
-}
 
 const createAssignmentSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -340,26 +331,45 @@ function NewQuizDialog({ courseId }: { courseId: string }) {
   );
 }
 
-function JoinCodeCard({ courseId, joinCode }: { courseId: string; joinCode: string | null }) {
+function JoinCodeChip({ courseId, joinCode }: { courseId: string; joinCode: string | null }) {
   const regenerate = useRegenerateJoinCode(courseId);
+  const [copied, setCopied] = useState(false);
+
+  function copy() {
+    if (!joinCode) return;
+    navigator.clipboard?.writeText(joinCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
 
   return (
-    <Card>
-      <CardContent className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs text-muted-foreground">Join code</p>
-          <p className="font-mono text-lg tracking-widest text-foreground">{joinCode}</p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={regenerate.isPending}
-          onClick={() => regenerate.mutate()}
-        >
-          {regenerate.isPending ? "Regenerating..." : "Regenerate"}
-        </Button>
-      </CardContent>
-    </Card>
+    <div className="flex items-center gap-1 rounded-card bg-white/15 p-1.5 pl-3 backdrop-blur-sm">
+      <div className="mr-2">
+        <p className="text-[11px] font-medium tracking-wide text-white/80 uppercase">Join code</p>
+        <p className="font-mono text-lg font-medium tracking-widest text-white">{joinCode}</p>
+      </div>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="text-white hover:bg-white/20 hover:text-white"
+        aria-label={copied ? "Copied" : "Copy join code"}
+        onClick={copy}
+      >
+        {copied ? <IconCheck stroke={2} /> : <IconCopy stroke={1.75} />}
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className="text-white hover:bg-white/20 hover:text-white"
+        aria-label="Regenerate join code"
+        title="Regenerate join code"
+        disabled={regenerate.isPending}
+        onClick={() => regenerate.mutate()}
+      >
+        <IconRefresh stroke={1.75} />
+      </Button>
+    </div>
   );
 }
 
@@ -368,12 +378,18 @@ function EditCourseDialog({ course }: { course: Course }) {
   const updateCourse = useUpdateCourse(course.id);
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
   } = useForm<EditCourseValues>({
     resolver: zodResolver(editCourseSchema),
-    values: { name: course.name, subject: course.subject, description: course.description ?? "" },
+    values: {
+      name: course.name,
+      subject: course.subject,
+      description: course.description ?? "",
+      color: course.color,
+    },
   });
 
   function onSubmit(values: EditCourseValues) {
@@ -390,7 +406,7 @@ function EditCourseDialog({ course }: { course: Course }) {
         if (!nextOpen) reset();
       }}
     >
-      <DialogTrigger render={<Button variant="outline">Edit course</Button>} />
+      <DialogTrigger render={<Button variant="outline">Edit details</Button>} />
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit course</DialogTitle>
@@ -411,6 +427,14 @@ function EditCourseDialog({ course }: { course: Course }) {
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="edit-description">Description (optional)</Label>
             <Textarea id="edit-description" rows={3} {...register("description")} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label>Color</Label>
+            <Controller
+              control={control}
+              name="color"
+              render={({ field }) => <CourseColorPicker value={field.value} onChange={field.onChange} />}
+            />
           </div>
           <DialogFooter>
             <Button type="submit" disabled={updateCourse.isPending}>
@@ -509,74 +533,49 @@ function ArchiveControl({ course }: { course: Course }) {
 
   return (
     <Button
-      variant="outline"
+      variant="destructive"
       disabled={archiveCourse.isPending}
       onClick={() => archiveCourse.mutate()}
     >
-      {archiveCourse.isPending ? "Archiving..." : "Archive"}
+      {archiveCourse.isPending ? "Archiving..." : "Archive course"}
     </Button>
   );
 }
 
-export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
-  const course = useCourse(id);
-  const enrolled = useEnrolledStudents(id);
-  const assignments = useCourseAssignments(id);
-  const quizzes = useCourseQuizzes(id);
-  const removeStudent = useRemoveStudent(id);
-
-  if (course.isLoading) {
-    return (
-      <div className="flex flex-col gap-4">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-24 w-full" />
+function SettingsRow({ title, description, children }: { title: string; description: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-medium text-foreground">{title}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       </div>
-    );
-  }
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
 
-  if (!course.data) {
-    return <p className="text-sm text-muted-foreground">Course not found.</p>;
-  }
-
-  const archived = course.data.archivedAt !== null;
+function PeopleTab({ courseId }: { courseId: string }) {
+  const enrolled = useEnrolledStudents(courseId);
+  const removeStudent = useRemoveStudent(courseId);
 
   return (
-    <div className="flex flex-col gap-6">
-      {archived ? (
-        <Alert>
-          <AlertTitle>This course is archived</AlertTitle>
-          <AlertDescription>
-            It&apos;s read-only — no new assignments, sessions, or enrollments. Unarchive to make changes again.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-medium text-foreground">{course.data.name}</h1>
-          <p className="text-sm text-muted-foreground">{course.data.subject}</p>
-          {course.data.description ? (
-            <p className="mt-2 text-sm text-muted-foreground">{course.data.description}</p>
-          ) : null}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <EditCourseDialog course={course.data} />
-            <DuplicateCourseDialog course={course.data} />
-            <ArchiveControl course={course.data} />
-          </div>
-        </div>
-        {!archived ? <JoinCodeCard courseId={id} joinCode={course.data.joinCode} /> : null}
+    <div className="flex flex-col gap-3">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-lg font-semibold text-foreground">Students</h2>
+        {enrolled.data ? (
+          <p className="text-sm text-muted-foreground">
+            {enrolled.data.length} enrolled
+          </p>
+        ) : null}
       </div>
-
-      <div>
-        <h2 className="mb-3 text-lg font-medium text-foreground">Enrolled students</h2>
-        {enrolled.isLoading ? (
-          <Skeleton className="h-16 w-full" />
-        ) : enrolled.data && enrolled.data.length > 0 ? (
+      {enrolled.isLoading ? (
+        <Skeleton className="h-16 w-full" />
+      ) : enrolled.data && enrolled.data.length > 0 ? (
+        <Card className="py-0">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                <TableHead className="pl-4">Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Added</TableHead>
                 <TableHead />
@@ -593,75 +592,153 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
               ))}
             </TableBody>
           </Table>
-        ) : (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No students enrolled yet.</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-foreground">Assignments</h2>
-          {!archived ? <NewAssignmentDialog courseId={id} /> : null}
-        </div>
-        {assignments.isLoading ? (
-          <Skeleton className="h-16 w-full" />
-        ) : assignments.data && assignments.data.length > 0 ? (
-          <div className="flex flex-col gap-4">
-            {groupAssignmentsByTopic(assignments.data).map(([topicName, group]) => (
-              <div key={topicName}>
-                <p className="mb-2 text-xs font-medium text-muted-foreground">{topicName}</p>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {group.map((assignment) => (
-                    <AssignmentCard key={assignment.id} assignment={assignment} />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No assignments yet.</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-medium text-foreground">Quizzes</h2>
-          {!archived ? <NewQuizDialog courseId={id} /> : null}
-        </div>
-        {quizzes.isLoading ? (
-          <Skeleton className="h-16 w-full" />
-        ) : quizzes.data && quizzes.data.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {quizzes.data.map((quiz) => (
-              <QuizCard key={quiz.id} quiz={quiz} />
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No quizzes yet.</p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      <TopicsManager courseId={id} editable={!archived} />
-
-      <MaterialsSection courseId={id} editable={!archived} />
-
-      <GradeCategoriesManager courseId={id} editable={!archived} />
-
-      <AnnouncementsSection courseId={id} editable={!archived} />
-
-      <DiscussionsSection scope="tutor" courseId={id} archived={archived} />
+        </Card>
+      ) : (
+        <EmptyState
+          icon={IconUsers}
+          title="No students yet"
+          description="Share the join code above. Students enter it under Courses → Join a class."
+        />
+      )}
     </div>
+  );
+}
+
+const TABS: CourseTab[] = [
+  { id: "stream", label: "Stream" },
+  { id: "classwork", label: "Classwork" },
+  { id: "people", label: "People" },
+  { id: "discussions", label: "Discussions" },
+  { id: "settings", label: "Settings" },
+];
+
+function CourseDetail({ id }: { id: string }) {
+  const course = useCourse(id);
+  const assignments = useCourseAssignments(id);
+  const quizzes = useCourseQuizzes(id);
+  const topics = useTopics(id);
+  const threads = useDiscussionThreads("tutor", id);
+  const unread = threads.data?.filter((thread) => thread.unread).length ?? 0;
+  const tabs = TABS.map((tab) => (tab.id === "discussions" ? { ...tab, badge: unread } : tab));
+  const tab = useCourseTab(tabs);
+
+  if (course.isLoading) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Skeleton className="h-4 w-40" />
+        <Skeleton className="h-36 w-full rounded-card" />
+        <Skeleton className="h-10 w-full" />
+      </div>
+    );
+  }
+
+  if (!course.data) {
+    return <p className="text-sm text-muted-foreground">Course not found.</p>;
+  }
+
+  const archived = course.data.archivedAt !== null;
+  const assignmentList = assignments.data ?? [];
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <Breadcrumbs items={[{ label: "Courses", href: "/courses" }, { label: course.data.name }]} />
+        {archived ? (
+          <Alert className="mb-4">
+            <AlertTitle>This course is archived</AlertTitle>
+            <AlertDescription>
+              It&apos;s read-only — no new assignments, sessions, or enrollments. Unarchive it under Settings to make
+              changes again.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+        <CourseBanner
+          course={course.data}
+          aside={!archived ? <JoinCodeChip courseId={id} joinCode={course.data.joinCode} /> : null}
+        />
+      </div>
+
+      <CourseTabs tabs={tabs} active={tab} />
+
+      {tab === "stream" ? (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <AnnouncementsSection courseId={id} editable={!archived} />
+          <div className="flex flex-col gap-4">
+            <UpcomingCard assignments={assignmentList} href={(assignment) => `/assignments/${assignment.id}`} />
+          </div>
+        </div>
+      ) : null}
+
+      {tab === "classwork" ? (
+        <div className="flex flex-col gap-10">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-foreground">Assignments &amp; quizzes</h2>
+              {!archived ? (
+                <div className="flex gap-2">
+                  <NewAssignmentDialog courseId={id} />
+                  <NewQuizDialog courseId={id} />
+                </div>
+              ) : null}
+            </div>
+            {assignments.isLoading || quizzes.isLoading ? (
+              <Skeleton className="h-24 w-full" />
+            ) : (
+              <ClassworkByTopic
+                assignments={assignmentList}
+                quizzes={quizzes.data ?? []}
+                topicOrder={topics.data?.map((topic) => topic.name)}
+                emptyDescription="Create an assignment or quiz. Group them by unit with topics below."
+              />
+            )}
+          </div>
+          <MaterialsSection courseId={id} editable={!archived} />
+          <TopicsManager courseId={id} editable={!archived} />
+        </div>
+      ) : null}
+
+      {tab === "people" ? <PeopleTab courseId={id} /> : null}
+
+      {tab === "discussions" ? <DiscussionsSection scope="tutor" courseId={id} archived={archived} /> : null}
+
+      {tab === "settings" ? (
+        <div className="flex flex-col gap-10">
+          <Card>
+            <CardContent className="divide-y divide-border">
+              <SettingsRow title="Course details" description="Name, subject, description, and color.">
+                <EditCourseDialog course={course.data} />
+              </SettingsRow>
+              <SettingsRow
+                title="Duplicate course"
+                description="Copy this course's content into a new course for another section or school year."
+              >
+                <DuplicateCourseDialog course={course.data} />
+              </SettingsRow>
+              <SettingsRow
+                title={archived ? "Unarchive course" : "Archive course"}
+                description={
+                  archived
+                    ? "Make the course editable again and let students join."
+                    : "Make the course read-only and stop new enrollments. You can undo this."
+                }
+              >
+                <ArchiveControl course={course.data} />
+              </SettingsRow>
+            </CardContent>
+          </Card>
+          <GradeCategoriesManager courseId={id} editable={!archived} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+export default function CourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  // useSearchParams (the active tab) needs a Suspense boundary.
+  return (
+    <Suspense fallback={<Skeleton className="h-36 w-full rounded-card" />}>
+      <CourseDetail id={id} />
+    </Suspense>
   );
 }

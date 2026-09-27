@@ -25,7 +25,7 @@ export default function QuizAttemptReviewPage({ params }: { params: Promise<{ id
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-2xl font-medium text-foreground">Review quiz attempt</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-foreground">Review quiz attempt</h1>
       <QuizAttemptReview attempt={attempt.data} />
     </div>
   );

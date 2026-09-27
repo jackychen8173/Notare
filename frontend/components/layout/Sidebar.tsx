@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
 
 import { cn } from "@/lib/utils";
+import type { CourseColor } from "@/types/course";
 
 export interface SidebarNavItem {
   href: string;
@@ -12,39 +13,113 @@ export interface SidebarNavItem {
   icon: ComponentType<{ className?: string; stroke?: number }>;
 }
 
-interface SidebarProps {
-  items: SidebarNavItem[];
+export interface SidebarCourseLink {
+  id: string;
+  name: string;
+  color: CourseColor;
 }
 
-export function Sidebar({ items }: SidebarProps) {
+export interface SidebarCourses {
+  // Route prefix for a course's page, e.g. "/courses" or "/student/courses".
+  basePath: string;
+  items: SidebarCourseLink[] | undefined;
+}
+
+interface SidebarProps {
+  items: SidebarNavItem[];
+  courses?: SidebarCourses;
+  onNavigate?: () => void;
+}
+
+export function BrandMark() {
+  return (
+    <span className="flex items-center gap-2">
+      <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground">
+        N
+      </span>
+      <span className="text-base font-semibold tracking-tight text-sidebar-foreground">Notare</span>
+    </span>
+  );
+}
+
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/** Sidebar body: shared by the desktop rail and the phone drawer. */
+export function SidebarContent({ items, courses, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const courseItems = courses?.items ?? [];
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r-hairline border-sidebar-border bg-sidebar md:flex">
-      <div className="flex h-14 items-center border-b-hairline border-sidebar-border px-6">
-        <span className="text-lg font-medium text-sidebar-foreground">Notare</span>
-      </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+    <nav className="flex flex-1 flex-col gap-6 overflow-y-auto p-3">
+      <div className="flex flex-col gap-0.5">
         {items.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+          // A course page lives under the Courses route but is highlighted in the course list below,
+          // so the Courses entry only lights up on the list page itself.
+          const active =
+            courses && item.href === courses.basePath
+              ? pathname === item.href
+              : isActive(pathname, item.href);
           const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+                active
+                  ? "bg-primary-soft text-primary"
+                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground",
               )}
             >
-              <Icon className="size-4" stroke={1.75} />
+              <Icon className="size-[18px]" stroke={1.75} />
               {item.label}
             </Link>
           );
         })}
-      </nav>
+      </div>
+
+      {courses && courseItems.length > 0 ? (
+        <div className="flex flex-col gap-0.5">
+          <p className="px-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Your courses
+          </p>
+          {courseItems.map((course) => {
+            const href = `${courses.basePath}/${course.id}`;
+            const active = isActive(pathname, href);
+            return (
+              <Link
+                key={course.id}
+                href={href}
+                onClick={onNavigate}
+                data-course-color={course.color}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors",
+                  active
+                    ? "bg-sidebar-accent font-medium text-sidebar-foreground"
+                    : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                )}
+              >
+                <span className="size-2.5 shrink-0 rounded-full bg-course" aria-hidden />
+                <span className="truncate">{course.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      ) : null}
+    </nav>
+  );
+}
+
+export function Sidebar(props: SidebarProps) {
+  return (
+    <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+      <div className="flex h-14 shrink-0 items-center px-5">
+        <BrandMark />
+      </div>
+      <SidebarContent {...props} />
     </aside>
   );
 }

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 
+import { IconUsers } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -57,7 +60,7 @@ export default function AdminUsersPage() {
           </TableBody>
         </Table>
       ) : (
-        <p className="text-sm text-muted-foreground">No users yet.</p>
+        <EmptyState icon={IconUsers} title="No users yet" />
       )}
     </>
   );

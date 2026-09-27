@@ -5,11 +5,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { IconCalendarEvent } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { SageProgressSummary } from "@/components/sage/SageProgressSummary";
 import { SessionCard } from "@/components/session/SessionCard";
 import { StudentAvatar } from "@/components/student/StudentAvatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -230,11 +233,12 @@ export default function StudentDetailPage({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
+      <Breadcrumbs items={[{ label: "Students", href: "/students" }, { label: student.data.name }]} />
+      <div className="-mt-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <StudentAvatar name={student.data.name} size="lg" />
           <div>
-            <h1 className="text-2xl font-medium text-foreground">{student.data.name}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{student.data.name}</h1>
             <p className="text-sm text-muted-foreground">{student.data.email}</p>
           </div>
         </div>
@@ -247,7 +251,7 @@ export default function StudentDetailPage({
       <SageProgressSummary studentId={id} />
 
       <div>
-        <h2 className="mb-3 text-lg font-medium text-foreground">Sessions</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">Sessions</h2>
         {sessions.isLoading ? (
           <Skeleton className="h-16 w-full" />
         ) : studentSessions.length > 0 ? (
@@ -257,11 +261,7 @@ export default function StudentDetailPage({
             ))}
           </div>
         ) : (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No sessions scheduled yet.</p>
-            </CardContent>
-          </Card>
+          <EmptyState icon={IconCalendarEvent} title="No sessions scheduled yet" description="Schedule a session to start tracking notes and progress." />
         )}
       </div>
     </div>

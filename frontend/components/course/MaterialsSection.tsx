@@ -5,6 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { IconPaperclip } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -191,7 +194,7 @@ export function MaterialsSection({ courseId, editable }: { courseId: string; edi
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-medium text-foreground">Materials</h2>
+        <h2 className="text-lg font-semibold text-foreground">Materials</h2>
         {editable ? <NewMaterialDialog courseId={courseId} /> : null}
       </div>
       {materials.isLoading ? (
@@ -209,11 +212,7 @@ export function MaterialsSection({ courseId, editable }: { courseId: string; edi
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No materials yet.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={IconPaperclip} title="No materials yet" description="Share links, Google Docs, Google Slides, or PDFs with the class." />
       )}
     </div>
   );
@@ -224,7 +223,7 @@ export function StudentMaterialsSection({ courseId }: { courseId: string }) {
 
   return (
     <div>
-      <h2 className="mb-3 text-lg font-medium text-foreground">Materials</h2>
+      <h2 className="mb-3 text-lg font-semibold text-foreground">Materials</h2>
       {materials.isLoading ? (
         <Skeleton className="h-16 w-full" />
       ) : materials.data && materials.data.length > 0 ? (
@@ -234,11 +233,7 @@ export function StudentMaterialsSection({ courseId }: { courseId: string }) {
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No materials yet.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={IconPaperclip} title="No materials yet" description="Your tutor hasn't shared any materials yet." />
       )}
     </div>
   );

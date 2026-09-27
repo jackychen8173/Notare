@@ -3,6 +3,9 @@
 import { use } from "react";
 import Link from "next/link";
 
+import { IconFileText, IconUsers } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { StudentRow } from "@/components/student/StudentRow";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +15,7 @@ import {
   useAdminCourseAssignments,
   useAdminCourseStudents,
 } from "@/hooks/useAdminCourses";
+import { formatDueDate } from "@/lib/dates";
 
 export default function AdminCourseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -35,7 +39,7 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-medium text-foreground">{course.data.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{course.data.name}</h1>
         <p className="text-sm text-muted-foreground">
           {course.data.subject} · Taught by {course.data.tutorName}
         </p>
@@ -45,7 +49,7 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-medium text-foreground">Enrolled students</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">Enrolled students</h2>
         {students.isLoading ? (
           <Skeleton className="h-16 w-full" />
         ) : students.data && students.data.length > 0 ? (
@@ -64,27 +68,23 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
             </TableBody>
           </Table>
         ) : (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No students enrolled yet.</p>
-            </CardContent>
-          </Card>
+          <EmptyState icon={IconUsers} title="No students enrolled yet" />
         )}
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-medium text-foreground">Assignments</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">Assignments</h2>
         {assignments.isLoading ? (
           <Skeleton className="h-16 w-full" />
         ) : assignments.data && assignments.data.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-2">
             {assignments.data.map((assignment) => (
               <Link key={assignment.id} href={`/admin/assignments/${assignment.id}`}>
-                <Card className="transition-colors hover:bg-muted/40">
+                <Card className="transition-all hover:-translate-y-px hover:shadow-elevated">
                   <CardContent>
                     <p className="font-medium text-foreground">{assignment.title}</p>
                     <p className="text-sm text-muted-foreground">
-                      Due {new Date(assignment.dueDate).toLocaleDateString()}
+                      Due {formatDueDate(assignment.dueDate)}
                     </p>
                   </CardContent>
                 </Card>
@@ -92,11 +92,7 @@ export default function AdminCourseDetailPage({ params }: { params: Promise<{ id
             ))}
           </div>
         ) : (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No assignments yet.</p>
-            </CardContent>
-          </Card>
+          <EmptyState icon={IconFileText} title="No assignments yet" />
         )}
       </div>
     </div>

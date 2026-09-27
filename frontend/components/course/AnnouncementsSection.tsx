@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+import { IconSpeakerphone } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -78,7 +81,7 @@ export function AnnouncementsSection({ courseId, editable }: { courseId: string;
 
   return (
     <div>
-      <h2 className="mb-3 text-lg font-medium text-foreground">Announcements</h2>
+      <h2 className="mb-3 text-lg font-semibold text-foreground">Announcements</h2>
       <div className="flex flex-col gap-3">
         {editable ? <NewAnnouncementForm courseId={courseId} /> : null}
         {announcements.isLoading ? (
@@ -94,11 +97,7 @@ export function AnnouncementsSection({ courseId, editable }: { courseId: string;
             />
           ))
         ) : (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No announcements yet.</p>
-            </CardContent>
-          </Card>
+          <EmptyState icon={IconSpeakerphone} title="No announcements yet" description="Post updates and reminders for the whole class." />
         )}
       </div>
     </div>
@@ -110,7 +109,7 @@ export function StudentAnnouncementsSection({ courseId }: { courseId: string }) 
 
   return (
     <div>
-      <h2 className="mb-3 text-lg font-medium text-foreground">Announcements</h2>
+      <h2 className="mb-3 text-lg font-semibold text-foreground">Announcements</h2>
       <div className="flex flex-col gap-3">
         {announcements.isLoading ? (
           <Skeleton className="h-16 w-full" />
@@ -119,11 +118,7 @@ export function StudentAnnouncementsSection({ courseId }: { courseId: string }) 
             <AnnouncementCard key={announcement.id} announcement={announcement} editable={false} />
           ))
         ) : (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No announcements yet.</p>
-            </CardContent>
-          </Card>
+          <EmptyState icon={IconSpeakerphone} title="No announcements yet" description="Updates from your tutor will show up here." />
         )}
       </div>
     </div>

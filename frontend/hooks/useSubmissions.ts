@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type ApiEnvelope } from "@/lib/api";
 import type { PendingReviews } from "@/types/sage";
@@ -63,6 +63,23 @@ export function useMySubmission(assignmentId: string) {
     queryKey: submissionKeys.mineForAssignment(assignmentId),
     queryFn: () => fetchMySubmission(assignmentId),
     enabled: !!assignmentId,
+  });
+}
+
+/** The student's own submission (or null) for each assignment, keyed by assignment ID. */
+export function useMySubmissionsFor(assignmentIds: string[]) {
+  return useQueries({
+    queries: assignmentIds.map((assignmentId) => ({
+      queryKey: submissionKeys.mineForAssignment(assignmentId),
+      queryFn: () => fetchMySubmission(assignmentId),
+    })),
+    combine: (results) => {
+      const byAssignment: Record<string, Submission | null | undefined> = {};
+      results.forEach((result, index) => {
+        byAssignment[assignmentIds[index]] = result.data;
+      });
+      return byAssignment;
+    },
   });
 }
 

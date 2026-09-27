@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type ApiEnvelope } from "@/lib/api";
 import type {
@@ -41,6 +41,26 @@ export function useDiscussionThreads(scope: DiscussionScope, courseId: string) {
     },
     enabled: !!courseId,
     refetchInterval: POLL_INTERVAL_MS,
+  });
+}
+
+/** Unread thread count per course, for dashboards. Not polled, unlike an open discussion screen. */
+export function useUnreadDiscussionCounts(scope: DiscussionScope, courseIds: string[]) {
+  return useQueries({
+    queries: courseIds.map((courseId) => ({
+      queryKey: discussionKeys.forCourse(scope, courseId),
+      queryFn: async () => {
+        const res = await api.get<ApiEnvelope<DiscussionThreadSummary[]>>(paths[scope].course(courseId));
+        return res.data.data;
+      },
+    })),
+    combine: (results) => {
+      const byCourse: Record<string, number> = {};
+      results.forEach((result, index) => {
+        byCourse[courseIds[index]] = result.data?.filter((thread) => thread.unread).length ?? 0;
+      });
+      return { byCourse, total: Object.values(byCourse).reduce((sum, count) => sum + count, 0) };
+    },
   });
 }
 

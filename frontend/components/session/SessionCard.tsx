@@ -18,7 +18,7 @@ interface SessionCardProps {
 
 export function SessionCard({ session, href }: SessionCardProps) {
   const card = (
-    <Card className={href ? "transition-colors hover:bg-muted/40" : undefined}>
+    <Card className={href ? "transition-all hover:-translate-y-px hover:shadow-elevated" : undefined}>
       <CardContent className="flex items-center justify-between gap-4">
         <div>
           <p className="font-medium text-foreground">{session.subject}</p>

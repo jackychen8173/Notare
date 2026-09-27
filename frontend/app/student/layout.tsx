@@ -2,9 +2,9 @@
 
 import { IconBook2, IconLayoutDashboard } from "@tabler/icons-react";
 
-import { Sidebar } from "@/components/layout/Sidebar";
-import { TopNav } from "@/components/layout/TopNav";
+import { AppShell } from "@/components/layout/AppShell";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useMyCourses } from "@/hooks/useCourses";
 
 const navItems = [
   { href: "/student/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
@@ -13,15 +13,16 @@ const navItems = [
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const authorized = useAuthGuard("STUDENT");
+  const courses = useMyCourses({ enabled: authorized });
   if (!authorized) return null;
 
   return (
-    <div className="flex min-h-screen">
-      <Sidebar items={navItems} />
-      <div className="flex flex-1 flex-col">
-        <TopNav profileHref="/student/profile" />
-        <main className="flex-1 p-8">{children}</main>
-      </div>
-    </div>
+    <AppShell
+      navItems={navItems}
+      courses={{ basePath: "/student/courses", items: courses.data }}
+      profileHref="/student/profile"
+    >
+      {children}
+    </AppShell>
   );
 }
