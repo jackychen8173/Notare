@@ -5,6 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { IconScale } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -84,7 +87,7 @@ export function GradeCategoriesManager({ courseId, editable }: { courseId: strin
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-medium text-foreground">Grade categories</h2>
+        <h2 className="text-lg font-semibold text-foreground">Grade categories</h2>
         {editable ? <NewCategoryDialog courseId={courseId} /> : null}
       </div>
       {categories.isLoading ? (
@@ -117,11 +120,7 @@ export function GradeCategoriesManager({ courseId, editable }: { courseId: strin
           ) : null}
         </div>
       ) : (
-        <Card>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No grade categories yet.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={IconScale} title="No grade categories yet" description="Group assignments into weighted categories, like Labs 40% and Tests 60%." />
       )}
     </div>
   );

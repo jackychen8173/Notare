@@ -133,7 +133,7 @@ function NewThreadDialog({ scope, courseId }: { scope: DiscussionScope; courseId
 function ThreadRow({ scope, thread }: { scope: DiscussionScope; thread: DiscussionThreadSummary }) {
   return (
     <Link href={threadHref(scope, thread.id)} className="block">
-      <Card className="transition-colors hover:bg-muted/50">
+      <Card className="transition-all hover:-translate-y-px hover:shadow-elevated">
         <CardContent className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -172,7 +172,7 @@ export function DiscussionsSection({
     <div>
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 className="text-lg font-medium text-foreground">Discussions</h2>
+          <h2 className="text-lg font-semibold text-foreground">Discussions</h2>
           {unreadCount > 0 ? <Badge>{unreadCount} new</Badge> : null}
         </div>
         {!archived ? <NewThreadDialog scope={scope} courseId={courseId} /> : null}

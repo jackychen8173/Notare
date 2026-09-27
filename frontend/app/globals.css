@@ -3,22 +3,30 @@
 @import "shadcn/tailwind.css";
 
 /*
- * Notare design tokens — mirrors the "Design system" section of
- * docs/notare-system-prompt.md exactly. Light theme only; the spec defines
- * no dark palette.
+ * Notare design tokens (v2, 2026-09-27). Supersedes the original spec's design-system rules in
+ * docs/notare-system-prompt.md, which asked for no shadows, 0.5px borders, weights 400/500 and a
+ * light theme only. Those were loosened on purpose; see CLAUDE.md "Design system".
  *
- * Hard rules for every component built on top of this file:
- *   - No shadows, no gradients.
- *   - Borders are 0.5px only — use the `border-hairline` utility below,
- *     never Tailwind's default `border` (1px).
- *   - Radius: buttons/controls use the base shadcn scale (--radius = 6px,
- *     so `rounded-lg` = 6px); cards use the explicit `rounded-card` (12px)
- *     utility; badges use Tailwind's built-in `rounded-full` (pill).
- *   - Icons: Tabler Icons (outline variant) only — not shadcn's default
- *     Lucide set. Swap icons when a component first needs one.
- *   - `sage` / `sage-surface` / `sage-border` / `sage-text` are reserved
- *     exclusively for Sage (AI) content — never use them for anything else.
+ * Rules for every component built on top of this file:
+ *   - Light and dark themes. Always use tokens (bg-card, text-muted-foreground, ...), never raw
+ *     hex/Tailwind palette colors, so both themes work. The theme is a `.dark` class on <html>
+ *     (next-themes).
+ *   - Depth comes from soft shadows: `shadow-card` for resting cards, `shadow-elevated` for
+ *     popovers/dialogs/hover lift. Borders are 1px `border-border`; `border-hairline` (0.5px) is
+ *     still available for dividers inside a surface.
+ *   - Radius: controls use the shadcn scale off --radius (8px, so `rounded-lg`); cards use
+ *     `rounded-card` (14px); badges and chips use `rounded-full`.
+ *   - Type: Inter 400/500/600. 600 is for page and section headings only.
+ *   - Primary (indigo) is the interactive accent: buttons, active nav, links, focus rings.
+ *   - Course colors: set `data-course-color="TEAL"` (etc.) on an element and use `bg-course`
+ *     (dots/accents), `bg-course-solid` (large fills behind white text), `bg-course-soft` and
+ *     `text-course` inside it.
+ *   - Icons: Tabler Icons (outline) only.
+ *   - `sage` / `sage-surface` / `sage-border` / `sage-text` are reserved exclusively for Sage (AI)
+ *     content. Never use them (or any green) for anything else.
  */
+
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -31,7 +39,6 @@
   --font-sans: "Inter", "Inter Fallback", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, monospace;
   --font-heading: var(--font-sans);
-
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -40,17 +47,17 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
-
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -59,6 +66,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -70,17 +78,16 @@
   --color-sage-border: var(--sage-border);
   --color-sage-text: var(--sage-text);
 
-  /* Full neutral scale, exposed directly (bg-neutral-100, text-neutral-600, etc.) */
-  --color-neutral-900: var(--neutral-900);
-  --color-neutral-600: var(--neutral-600);
-  --color-neutral-400: var(--neutral-400);
-  --color-neutral-100: var(--neutral-100);
-  --color-neutral-50: var(--neutral-50);
+  /* Per-course accent, resolved from the nearest [data-course-color] ancestor */
+  --color-course: var(--course);
+  --color-course-soft: var(--course-soft);
+  /* Deep shade in both themes, for large fills behind white text (banners, card headers). The dark
+     theme only brightens --course (dots, text, accents), since white on a bright fill is unreadable. */
+  --color-course-solid: var(--course-solid);
 
-  /* Base radius scale (shadcn's multiplicative scale off --radius below);
-     rounded-lg = --radius = 6px, matching the spec's button radius, so
-     shadcn's generated components (Button, Input, ...) need no per-file
-     radius override. */
+  --shadow-card: var(--elevation-1);
+  --shadow-elevated: var(--elevation-2);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -88,67 +95,140 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  /* Explicit card radius per spec (12px) — not derived from the button
-     scale above, since the two are independently specified. Use
-     `rounded-card` on Card and similar large containers. */
-  --radius-card: 0.75rem;
+  --radius-card: 0.875rem;
 }
 
 :root {
-  --background: #ffffff;
+  --background: #faf9f6;
   --foreground: #1c1c1a;
   --card: #ffffff;
   --card-foreground: #1c1c1a;
   --popover: #ffffff;
   --popover-foreground: #1c1c1a;
-  --primary: #0f2027;
+
+  --primary: #4f46e5;
   --primary-foreground: #ffffff;
+  --primary-soft: #eef0ff;
+
   --secondary: #f1efe8;
   --secondary-foreground: #1c1c1a;
   --muted: #f1efe8;
   --muted-foreground: #5f5e5a;
-  /* Not sage — sage is reserved for AI content only */
-  --accent: #d3d1c7;
+  --accent: #eceae3;
   --accent-foreground: #1c1c1a;
-  /* Spec doesn't define an error color; standard error red, not from the design system palette */
+
   --destructive: #dc2626;
-  --border: #d3d1c7;
-  --input: #d3d1c7;
-  --ring: #0f2027;
+  --warning: #b45309;
+  --warning-surface: #fef3c7;
 
-  /* Extrapolated teal tints for data viz — spec defines no chart palette,
-     and sage is off-limits here since progress charts aren't AI content */
-  --chart-1: #0f2027;
-  --chart-2: #3d5560;
-  --chart-3: #6b8a94;
-  --chart-4: #96adb4;
-  --chart-5: #c1d0d4;
+  --border: #e4e2da;
+  --input: #dad8cf;
+  --ring: #4f46e5;
 
-  --radius: 0.375rem;
+  --chart-1: #4f46e5;
+  --chart-2: #6f68ea;
+  --chart-3: #918cf0;
+  --chart-4: #b4b1f5;
+  --chart-5: #d6d4fa;
 
-  --sidebar: #f1efe8;
+  --radius: 0.5rem;
+
+  --sidebar: #f4f3ee;
   --sidebar-foreground: #1c1c1a;
-  --sidebar-primary: #0f2027;
+  --sidebar-primary: #4f46e5;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #d3d1c7;
+  --sidebar-accent: #e8e6de;
   --sidebar-accent-foreground: #1c1c1a;
-  --sidebar-border: #d3d1c7;
-  --sidebar-ring: #0f2027;
+  --sidebar-border: #e4e2da;
+  --sidebar-ring: #4f46e5;
 
   --sage: #1d9e75;
   --sage-surface: #e1f5ee;
   --sage-border: #9fe1cb;
   --sage-text: #085041;
 
-  --neutral-900: #1c1c1a;
-  --neutral-600: #5f5e5a;
-  --neutral-400: #888780;
-  --neutral-100: #d3d1c7;
-  --neutral-50: #f1efe8;
+  --elevation-1: 0 1px 2px rgb(28 28 26 / 0.04), 0 1px 3px rgb(28 28 26 / 0.06);
+  --elevation-2: 0 4px 12px rgb(28 28 26 / 0.08), 0 2px 4px rgb(28 28 26 / 0.05);
+
+  --course: #0f766e;
+  --course-solid: #0f766e;
+  --course-soft: #ddf3f0;
 }
 
-/* 0.5px borders only — use instead of Tailwind's default `border` (1px).
-   Directional variants for single-side borders (sidebar rail, top nav). */
+.dark {
+  --background: #121211;
+  --foreground: #edece8;
+  --card: #1b1b19;
+  --card-foreground: #edece8;
+  --popover: #21211f;
+  --popover-foreground: #edece8;
+
+  --primary: #8b8ff7;
+  --primary-foreground: #121211;
+  --primary-soft: #25264a;
+
+  --secondary: #262624;
+  --secondary-foreground: #edece8;
+  --muted: #262624;
+  --muted-foreground: #a3a29c;
+  --accent: #2c2c29;
+  --accent-foreground: #edece8;
+
+  --destructive: #f87171;
+  --warning: #fbbf24;
+  --warning-surface: #3a2c0a;
+
+  --border: #2f2f2c;
+  --input: #3a3a36;
+  --ring: #8b8ff7;
+
+  --chart-1: #8b8ff7;
+  --chart-2: #7479e0;
+  --chart-3: #5e63c8;
+  --chart-4: #494db0;
+  --chart-5: #353897;
+
+  --sidebar: #161615;
+  --sidebar-foreground: #edece8;
+  --sidebar-primary: #8b8ff7;
+  --sidebar-primary-foreground: #121211;
+  --sidebar-accent: #2a2a27;
+  --sidebar-accent-foreground: #edece8;
+  --sidebar-border: #2a2a27;
+  --sidebar-ring: #8b8ff7;
+
+  --sage: #3cc295;
+  --sage-surface: #0f2a21;
+  --sage-border: #1e5a45;
+  --sage-text: #a6e8d0;
+
+  --elevation-1: 0 1px 2px rgb(0 0 0 / 0.3), 0 1px 3px rgb(0 0 0 / 0.25);
+  --elevation-2: 0 8px 24px rgb(0 0 0 / 0.45), 0 2px 6px rgb(0 0 0 / 0.3);
+
+  --course: #2dd4bf;
+  --course-soft: #10302c;
+}
+
+/* Course palette. Keys match the backend's CourseColor enum. No green: reserved for Sage. */
+[data-course-color="TEAL"] { --course: #0f766e; --course-solid: #0f766e; --course-soft: #ddf3f0; }
+[data-course-color="BLUE"] { --course: #2563eb; --course-solid: #2563eb; --course-soft: #e0ebff; }
+[data-course-color="INDIGO"] { --course: #4f46e5; --course-solid: #4f46e5; --course-soft: #e8e7fd; }
+[data-course-color="VIOLET"] { --course: #7c3aed; --course-solid: #7c3aed; --course-soft: #efe6fe; }
+[data-course-color="ROSE"] { --course: #e11d48; --course-solid: #e11d48; --course-soft: #fde4ea; }
+[data-course-color="ORANGE"] { --course: #ea580c; --course-solid: #c2410c; --course-soft: #feead9; }
+[data-course-color="AMBER"] { --course: #b45309; --course-solid: #b45309; --course-soft: #fdf0cf; }
+[data-course-color="SLATE"] { --course: #475569; --course-solid: #475569; --course-soft: #e5e9ef; }
+
+.dark [data-course-color="TEAL"], .dark[data-course-color="TEAL"] { --course: #2dd4bf; --course-soft: #10302c; }
+.dark [data-course-color="BLUE"], .dark[data-course-color="BLUE"] { --course: #60a5fa; --course-soft: #13233f; }
+.dark [data-course-color="INDIGO"], .dark[data-course-color="INDIGO"] { --course: #8b8ff7; --course-soft: #22234a; }
+.dark [data-course-color="VIOLET"], .dark[data-course-color="VIOLET"] { --course: #b18cfa; --course-soft: #2a1d47; }
+.dark [data-course-color="ROSE"], .dark[data-course-color="ROSE"] { --course: #fb7191; --course-soft: #3d1621; }
+.dark [data-course-color="ORANGE"], .dark[data-course-color="ORANGE"] { --course: #fb923c; --course-soft: #3b2010; }
+.dark [data-course-color="AMBER"], .dark[data-course-color="AMBER"] { --course: #fbbf24; --course-soft: #3a2c0a; }
+.dark [data-course-color="SLATE"], .dark[data-course-color="SLATE"] { --course: #94a3b8; --course-soft: #232a35; }
+
+/* Thin dividers inside a surface. Directional variants for single-side borders. */
 @utility border-hairline {
   border-width: 0.5px;
 }

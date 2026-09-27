@@ -3,6 +3,8 @@ package com.notare.course;
 import com.notare.user.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -45,6 +47,11 @@ public class Course {
 
     @Column(name = "join_code", nullable = false, unique = true, length = 8)
     private String joinCode;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private CourseColor color = CourseColor.TEAL;
 
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;

@@ -6,7 +6,7 @@ import { Providers } from "./providers";
 
 const inter = Inter({
   variable: "--font-inter",
-  weight: ["400", "500"],
+  weight: ["400", "500", "600"],
   subsets: ["latin"],
 });
 
@@ -23,8 +23,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // suppressHydrationWarning: next-themes sets the theme class on <html> before hydration.
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

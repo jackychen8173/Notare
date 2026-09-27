@@ -5,6 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { IconFolders } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -112,7 +115,7 @@ export function TopicsManager({ courseId, editable }: { courseId: string; editab
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-medium text-foreground">Topics</h2>
+        <h2 className="text-lg font-semibold text-foreground">Topics</h2>
         {editable ? <NewTopicDialog courseId={courseId} /> : null}
       </div>
       {topics.isLoading ? (
@@ -141,11 +144,7 @@ export function TopicsManager({ courseId, editable }: { courseId: string; editab
           ))}
         </div>
       ) : (
-        <Card>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">No topics yet.</p>
-          </CardContent>
-        </Card>
+        <EmptyState icon={IconFolders} title="No topics yet" description="Topics group classwork by unit, like &quot;Unit 1: Primitive Types&quot;." />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 package com.notare.course.dto;
 
 import com.notare.course.Course;
+import com.notare.course.CourseColor;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -13,6 +14,7 @@ public record CourseResponse(
         String subject,
         String description,
         String joinCode,
+        CourseColor color,
         LocalDateTime archivedAt
 ) {
     public static CourseResponse from(Course course) {
@@ -24,6 +26,7 @@ public record CourseResponse(
                 course.getSubject(),
                 course.getDescription(),
                 course.getJoinCode(),
+                course.getColor(),
                 course.getArchivedAt()
         );
     }
@@ -40,6 +43,7 @@ public record CourseResponse(
                 course.getSubject(),
                 course.getDescription(),
                 null,
+                course.getColor(),
                 course.getArchivedAt()
         );
     }

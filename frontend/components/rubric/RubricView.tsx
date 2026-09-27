@@ -17,7 +17,7 @@ export function RubricView({ assignmentId }: { assignmentId: string }) {
 
   return (
     <div>
-      <h2 className="mb-3 text-lg font-medium text-foreground">Grading rubric</h2>
+      <h2 className="mb-3 text-lg font-semibold text-foreground">Grading rubric</h2>
       <Card>
         <CardContent className="flex flex-col gap-3">
           <p className="font-medium text-foreground">{rubric.data.title}</p>

@@ -3,12 +3,15 @@
 import { use } from "react";
 import Link from "next/link";
 
+import { IconInbox } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAdminAssignment, useAdminAssignmentSubmissions } from "@/hooks/useAdminAssignments";
 import type { FeedbackStatus } from "@/types/submission";
+import { formatDueDate } from "@/lib/dates";
 
 const statusVariant: Record<FeedbackStatus, "default" | "secondary"> = {
   PENDING: "secondary",
@@ -37,9 +40,9 @@ export default function AdminAssignmentDetailPage({ params }: { params: Promise<
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-medium text-foreground">{assignment.data.title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{assignment.data.title}</h1>
         <p className="text-sm text-muted-foreground">
-          {assignment.data.courseName} · Due {new Date(assignment.data.dueDate).toLocaleDateString()}
+          {assignment.data.courseName} · Due {formatDueDate(assignment.data.dueDate)}
         </p>
         {assignment.data.description ? (
           <p className="mt-2 text-sm text-muted-foreground">{assignment.data.description}</p>
@@ -47,7 +50,7 @@ export default function AdminAssignmentDetailPage({ params }: { params: Promise<
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-medium text-foreground">Submissions</h2>
+        <h2 className="mb-3 text-lg font-semibold text-foreground">Submissions</h2>
         {submissions.isLoading ? (
           <Skeleton className="h-16 w-full" />
         ) : submissions.data && submissions.data.length > 0 ? (
@@ -85,11 +88,7 @@ export default function AdminAssignmentDetailPage({ params }: { params: Promise<
             </TableBody>
           </Table>
         ) : (
-          <Card>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">No submissions yet.</p>
-            </CardContent>
-          </Card>
+          <EmptyState icon={IconInbox} title="No submissions yet" description="Student work shows up here once it's turned in." />
         )}
       </div>
     </div>

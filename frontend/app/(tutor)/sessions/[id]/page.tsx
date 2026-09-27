@@ -2,6 +2,7 @@
 
 import { use } from "react";
 
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { SessionNoteForm } from "@/components/session/SessionNoteForm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,10 +39,17 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-4">
+      <Breadcrumbs
+        items={[
+          { label: "Students", href: "/students" },
+          { label: session.data.studentName, href: `/students/${session.data.studentId}` },
+          { label: session.data.subject },
+        ]}
+      />
+      <div className="-mt-6 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-medium text-foreground">{session.data.subject}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">{session.data.subject}</h1>
             <Badge variant={statusVariant[session.data.status]}>{session.data.status}</Badge>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">

@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import { IconBook2 } from "@tabler/icons-react";
 import { z } from "zod";
 
+import { CourseCard } from "@/components/course/CourseCard";
+import { EmptyState } from "@/components/layout/EmptyState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -101,25 +102,28 @@ export default function StudentCoursesPage() {
 
       {courses.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-40 w-full rounded-card" />
+          <Skeleton className="h-40 w-full rounded-card" />
+          <Skeleton className="h-40 w-full rounded-card" />
         </div>
       ) : courses.data && courses.data.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {courses.data.map((course) => (
-            <Link key={course.id} href={`/student/courses/${course.id}`}>
-              <Card className="transition-colors hover:bg-muted/40">
-                <CardContent>
-                  <p className="font-medium text-foreground">{course.name}</p>
-                  <p className="text-sm text-muted-foreground">{course.subject}</p>
-                </CardContent>
-              </Card>
-            </Link>
+            <CourseCard
+              key={course.id}
+              course={course}
+              href={`/student/courses/${course.id}`}
+              meta={course.tutorName}
+            />
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">You&apos;re not enrolled in any courses yet.</p>
+        <EmptyState
+          icon={IconBook2}
+          title="You're not in any courses yet"
+          description="Ask your tutor for the class code, then join with it."
+          action={<JoinCourseDialog />}
+        />
       )}
     </>
   );

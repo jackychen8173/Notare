@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { authorLabel, errorMessage } from "@/components/discussion/discussionUtils";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import {
   useUpdatePost,
   useUpdateThread,
 } from "@/hooks/useDiscussions";
+import { useCourse, useMyCourse } from "@/hooks/useCourses";
 import type { DiscussionPost, DiscussionScope, DiscussionThreadDetail } from "@/types/discussion";
 
 function timestamp(createdAt: string, editedAt: string | null) {
@@ -130,7 +131,7 @@ function ThreadBody({ scope, thread }: { scope: DiscussionScope; thread: Discuss
         ) : (
           <>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-medium text-foreground">{thread.title}</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{thread.title}</h1>
               {thread.pinned ? <Badge variant="secondary">Pinned</Badge> : null}
               {thread.visibility === "PRIVATE" ? (
                 <Badge variant="outline">{scope === "tutor" ? "Private" : "Private · only you and your tutor"}</Badge>
@@ -291,6 +292,11 @@ function ReplyForm({ scope, thread }: { scope: DiscussionScope; thread: Discussi
 
 export function DiscussionThreadView({ scope, threadId }: { scope: DiscussionScope; threadId: string }) {
   const thread = useDiscussionThread(scope, threadId);
+  const courseId = thread.data?.courseId ?? "";
+  // Only one of these is enabled (an empty ID disables a query), matching the viewer's side.
+  const tutorCourse = useCourse(scope === "tutor" ? courseId : "");
+  const studentCourse = useMyCourse(scope === "student" ? courseId : "");
+  const courseName = (scope === "tutor" ? tutorCourse : studentCourse).data?.name;
 
   if (thread.isLoading) {
     return (
@@ -310,14 +316,18 @@ export function DiscussionThreadView({ scope, threadId }: { scope: DiscussionSco
 
   return (
     <div className="flex flex-col gap-4">
-      <Link href={courseHref} className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to course
-      </Link>
+      <Breadcrumbs
+        items={[
+          { label: "Courses", href: scope === "tutor" ? "/courses" : "/student/courses" },
+          { label: courseName ?? "Course", href: `${courseHref}?tab=discussions` },
+          { label: data.title },
+        ]}
+      />
       {/* Keyed by edit time so an in-progress edit form resets to fresh values after a save lands. */}
       <ThreadBody key={`${data.id}-${data.editedAt}`} scope={scope} thread={data} />
       {scope === "tutor" ? <TutorControls thread={data} /> : null}
 
-      <h2 className="text-lg font-medium text-foreground">
+      <h2 className="text-lg font-semibold text-foreground">
         {data.posts.length} {data.posts.length === 1 ? "reply" : "replies"}
       </h2>
       {data.posts.map((post) => (

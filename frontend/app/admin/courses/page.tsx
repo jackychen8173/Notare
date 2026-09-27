@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 
+import { IconBook2 } from "@tabler/icons-react";
+
+import { EmptyState } from "@/components/layout/EmptyState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,7 +27,7 @@ export default function AdminCoursesPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {courses.data.map((course) => (
             <Link key={course.id} href={`/admin/courses/${course.id}`}>
-              <Card className="transition-colors hover:bg-muted/40">
+              <Card className="transition-all hover:-translate-y-px hover:shadow-elevated">
                 <CardContent>
                   <p className="font-medium text-foreground">{course.name}</p>
                   <p className="text-sm text-muted-foreground">{course.subject}</p>
@@ -35,7 +38,7 @@ export default function AdminCoursesPage() {
           ))}
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">No courses yet.</p>
+        <EmptyState icon={IconBook2} title="No courses yet" />
       )}
     </>
   );
