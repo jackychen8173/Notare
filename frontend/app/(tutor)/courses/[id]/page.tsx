@@ -11,6 +11,7 @@ import { AnnouncementsSection } from "@/components/course/AnnouncementsSection";
 import { ClassworkByTopic } from "@/components/course/ClassworkByTopic";
 import { CourseBanner } from "@/components/course/CourseBanner";
 import { CourseColorPicker } from "@/components/course/CourseColorPicker";
+import { CourseScheduleFields } from "@/components/course/CourseScheduleFields";
 import { CourseTabs, useCourseTab, type CourseTab } from "@/components/course/CourseTabs";
 import { GradeCategoriesManager } from "@/components/course/GradeCategoriesManager";
 import { MaterialsSection } from "@/components/course/MaterialsSection";
@@ -53,12 +54,14 @@ import { useDiscussionThreads } from "@/hooks/useDiscussions";
 import { useGradeCategories } from "@/hooks/useGradeCategories";
 import { useCourseQuizzes, useCreateQuiz } from "@/hooks/useQuizzes";
 import { useTopics } from "@/hooks/useTopics";
+import { formToSchedule, scheduleFormSchema, scheduleToForm } from "@/lib/schedule";
 
 const editCourseSchema = z.object({
   name: z.string().min(1, "Name is required"),
   subject: z.string().min(1, "Subject is required"),
   description: z.string().optional(),
   color: z.enum(COURSE_COLORS as [Course["color"], ...Course["color"][]]),
+  schedule: scheduleFormSchema,
 });
 
 type EditCourseValues = z.infer<typeof editCourseSchema>;
@@ -389,11 +392,12 @@ function EditCourseDialog({ course }: { course: Course }) {
       subject: course.subject,
       description: course.description ?? "",
       color: course.color,
+      schedule: scheduleToForm(course.schedule),
     },
   });
 
-  function onSubmit(values: EditCourseValues) {
-    updateCourse.mutate(values, {
+  function onSubmit({ schedule, ...values }: EditCourseValues) {
+    updateCourse.mutate({ ...values, schedule: formToSchedule(schedule) }, {
       onSuccess: () => setOpen(false),
     });
   }
@@ -407,7 +411,7 @@ function EditCourseDialog({ course }: { course: Course }) {
       }}
     >
       <DialogTrigger render={<Button variant="outline">Edit details</Button>} />
-      <DialogContent>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit course</DialogTitle>
         </DialogHeader>
@@ -436,6 +440,18 @@ function EditCourseDialog({ course }: { course: Course }) {
               render={({ field }) => <CourseColorPicker value={field.value} onChange={field.onChange} />}
             />
           </div>
+          <Controller
+            control={control}
+            name="schedule"
+            render={({ field }) => (
+              <CourseScheduleFields
+                idPrefix="edit-course"
+                value={field.value}
+                onChange={field.onChange}
+                error={errors.schedule?.message}
+              />
+            )}
+          />
           <DialogFooter>
             <Button type="submit" disabled={updateCourse.isPending}>
               {updateCourse.isPending ? "Saving..." : "Save changes"}

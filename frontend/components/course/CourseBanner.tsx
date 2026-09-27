@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
 
+import { IconClock } from "@tabler/icons-react";
+
+import { formatMeetingTimes } from "@/lib/schedule";
 import type { Course } from "@/types/course";
 
 /** Course header in the course's own color. `aside` sits on the right (join code, etc.). */
 export function CourseBanner({ course, aside }: { course: Course; aside?: ReactNode }) {
+  const meetingTimes = formatMeetingTimes(course.schedule);
   return (
     <div
       data-course-color={course.color}
@@ -22,6 +26,12 @@ export function CourseBanner({ course, aside }: { course: Course; aside?: ReactN
             {course.subject}
             {course.tutorName ? ` · ${course.tutorName}` : ""}
           </p>
+          {meetingTimes ? (
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-white/85">
+              <IconClock className="size-4" stroke={1.75} aria-hidden />
+              {meetingTimes}
+            </p>
+          ) : null}
           {course.description ? <p className="mt-2 max-w-2xl text-sm text-white/80">{course.description}</p> : null}
         </div>
         {aside ? <div className="shrink-0">{aside}</div> : null}

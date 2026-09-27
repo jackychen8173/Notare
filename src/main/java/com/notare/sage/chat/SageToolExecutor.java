@@ -468,7 +468,7 @@ public class SageToolExecutor {
         String name = String.valueOf(input.get("name"));
         String subject = String.valueOf(input.get("subject"));
         String description = input.get("description") != null ? String.valueOf(input.get("description")) : null;
-        return courseService.updateCourse(courseId, new UpdateCourseRequest(name, subject, description, null), tutor.getEmail());
+        return courseService.updateCourse(courseId, new UpdateCourseRequest(name, subject, description, null, null), tutor.getEmail());
     }
 
     private AssignmentResponse createAssignment(Map<String, Object> input, User tutor) {

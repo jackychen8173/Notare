@@ -210,23 +210,23 @@
 }
 
 /* Course palette. Keys match the backend's CourseColor enum. No green: reserved for Sage. */
-[data-course-color="TEAL"] { --course: #0f766e; --course-solid: #0f766e; --course-soft: #ddf3f0; }
-[data-course-color="BLUE"] { --course: #2563eb; --course-solid: #2563eb; --course-soft: #e0ebff; }
-[data-course-color="INDIGO"] { --course: #4f46e5; --course-solid: #4f46e5; --course-soft: #e8e7fd; }
-[data-course-color="VIOLET"] { --course: #7c3aed; --course-solid: #7c3aed; --course-soft: #efe6fe; }
-[data-course-color="ROSE"] { --course: #e11d48; --course-solid: #e11d48; --course-soft: #fde4ea; }
-[data-course-color="ORANGE"] { --course: #ea580c; --course-solid: #c2410c; --course-soft: #feead9; }
-[data-course-color="AMBER"] { --course: #b45309; --course-solid: #b45309; --course-soft: #fdf0cf; }
-[data-course-color="SLATE"] { --course: #475569; --course-solid: #475569; --course-soft: #e5e9ef; }
+[data-course-color="TEAL"], .course-color-TEAL { --course: #0f766e; --course-solid: #0f766e; --course-soft: #ddf3f0; }
+[data-course-color="BLUE"], .course-color-BLUE { --course: #2563eb; --course-solid: #2563eb; --course-soft: #e0ebff; }
+[data-course-color="INDIGO"], .course-color-INDIGO { --course: #4f46e5; --course-solid: #4f46e5; --course-soft: #e8e7fd; }
+[data-course-color="VIOLET"], .course-color-VIOLET { --course: #7c3aed; --course-solid: #7c3aed; --course-soft: #efe6fe; }
+[data-course-color="ROSE"], .course-color-ROSE { --course: #e11d48; --course-solid: #e11d48; --course-soft: #fde4ea; }
+[data-course-color="ORANGE"], .course-color-ORANGE { --course: #ea580c; --course-solid: #c2410c; --course-soft: #feead9; }
+[data-course-color="AMBER"], .course-color-AMBER { --course: #b45309; --course-solid: #b45309; --course-soft: #fdf0cf; }
+[data-course-color="SLATE"], .course-color-SLATE { --course: #475569; --course-solid: #475569; --course-soft: #e5e9ef; }
 
-.dark [data-course-color="TEAL"], .dark[data-course-color="TEAL"] { --course: #2dd4bf; --course-soft: #10302c; }
-.dark [data-course-color="BLUE"], .dark[data-course-color="BLUE"] { --course: #60a5fa; --course-soft: #13233f; }
-.dark [data-course-color="INDIGO"], .dark[data-course-color="INDIGO"] { --course: #8b8ff7; --course-soft: #22234a; }
-.dark [data-course-color="VIOLET"], .dark[data-course-color="VIOLET"] { --course: #b18cfa; --course-soft: #2a1d47; }
-.dark [data-course-color="ROSE"], .dark[data-course-color="ROSE"] { --course: #fb7191; --course-soft: #3d1621; }
-.dark [data-course-color="ORANGE"], .dark[data-course-color="ORANGE"] { --course: #fb923c; --course-soft: #3b2010; }
-.dark [data-course-color="AMBER"], .dark[data-course-color="AMBER"] { --course: #fbbf24; --course-soft: #3a2c0a; }
-.dark [data-course-color="SLATE"], .dark[data-course-color="SLATE"] { --course: #94a3b8; --course-soft: #232a35; }
+.dark [data-course-color="TEAL"], .dark[data-course-color="TEAL"], .dark .course-color-TEAL { --course: #2dd4bf; --course-soft: #10302c; }
+.dark [data-course-color="BLUE"], .dark[data-course-color="BLUE"], .dark .course-color-BLUE { --course: #60a5fa; --course-soft: #13233f; }
+.dark [data-course-color="INDIGO"], .dark[data-course-color="INDIGO"], .dark .course-color-INDIGO { --course: #8b8ff7; --course-soft: #22234a; }
+.dark [data-course-color="VIOLET"], .dark[data-course-color="VIOLET"], .dark .course-color-VIOLET { --course: #b18cfa; --course-soft: #2a1d47; }
+.dark [data-course-color="ROSE"], .dark[data-course-color="ROSE"], .dark .course-color-ROSE { --course: #fb7191; --course-soft: #3d1621; }
+.dark [data-course-color="ORANGE"], .dark[data-course-color="ORANGE"], .dark .course-color-ORANGE { --course: #fb923c; --course-soft: #3b2010; }
+.dark [data-course-color="AMBER"], .dark[data-course-color="AMBER"], .dark .course-color-AMBER { --course: #fbbf24; --course-soft: #3a2c0a; }
+.dark [data-course-color="SLATE"], .dark[data-course-color="SLATE"], .dark .course-color-SLATE { --course: #94a3b8; --course-soft: #232a35; }
 
 /* Thin dividers inside a surface. Directional variants for single-side borders. */
 @utility border-hairline {
@@ -255,4 +255,97 @@
   html {
     @apply font-sans;
   }
+}
+
+/*
+ * FullCalendar (the /calendar pages), themed onto our tokens so it follows light/dark. Scoped under
+ * .notare-calendar for enough specificity to beat the stylesheet FullCalendar injects at runtime.
+ * Event colors come from the course palette via the `course-color-*` classes CalendarView adds:
+ * class meetings are a soft course tint, due dates a solid course fill, sessions an outline.
+ */
+.notare-calendar .fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: var(--card);
+  --fc-neutral-bg-color: var(--muted);
+  --fc-neutral-text-color: var(--muted-foreground);
+  --fc-list-event-hover-bg-color: var(--muted);
+  --fc-today-bg-color: var(--primary-soft);
+  --fc-now-indicator-color: var(--destructive);
+  --fc-small-font-size: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--foreground);
+}
+.notare-calendar .fc .fc-scrollgrid,
+.notare-calendar .fc .fc-list {
+  border-radius: calc(var(--radius) + 2px);
+  overflow: hidden;
+}
+.notare-calendar .fc .fc-col-header-cell-cushion,
+.notare-calendar .fc .fc-daygrid-day-number,
+.notare-calendar .fc .fc-list-day-cushion a {
+  color: var(--muted-foreground);
+  font-weight: 500;
+  text-decoration: none;
+}
+.notare-calendar .fc .fc-day-today .fc-daygrid-day-number {
+  color: var(--primary);
+  font-weight: 600;
+}
+.notare-calendar .fc .fc-timegrid-slot-label-cushion,
+.notare-calendar .fc .fc-timegrid-axis-cushion {
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+}
+.notare-calendar .fc .fc-daygrid-more-link {
+  color: var(--primary);
+  font-weight: 500;
+}
+.notare-calendar .fc .fc-popover {
+  background: var(--popover);
+  border-color: var(--border);
+  box-shadow: var(--elevation-2);
+}
+.notare-calendar .fc .fc-list-empty {
+  background: var(--card);
+  color: var(--muted-foreground);
+}
+
+.notare-calendar .fc .nt-event {
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.notare-calendar .fc .nt-event-no-course {
+  --course: var(--primary);
+  --course-solid: var(--primary);
+  --course-soft: var(--primary-soft);
+}
+.notare-calendar .fc .nt-event-meeting {
+  --fc-event-bg-color: var(--course-soft);
+  --fc-event-border-color: var(--course-soft);
+  --fc-event-text-color: var(--foreground);
+  border-left: 3px solid var(--course);
+}
+.notare-calendar .fc .nt-event-assignment {
+  --fc-event-bg-color: var(--course-solid);
+  --fc-event-border-color: var(--course-solid);
+  --fc-event-text-color: #ffffff;
+}
+.notare-calendar .fc .nt-event-session {
+  --fc-event-bg-color: var(--card);
+  --fc-event-border-color: var(--course);
+  --fc-event-text-color: var(--foreground);
+  border-style: dashed;
+}
+/* The agenda view draws events as table rows with a dot, not as filled boxes. */
+.notare-calendar .fc .fc-list-event.nt-event {
+  --fc-event-text-color: var(--foreground);
+  background: transparent;
+  border-left: none;
+}
+.notare-calendar .fc .fc-list-event.nt-event .fc-list-event-dot {
+  border-color: var(--course);
+}
+.notare-calendar .fc .fc-list-event.nt-event-session .fc-list-event-dot {
+  border-style: dashed;
 }

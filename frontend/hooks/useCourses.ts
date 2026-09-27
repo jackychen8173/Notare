@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type ApiEnvelope } from "@/lib/api";
-import type { Course, CourseColor } from "@/types/course";
+import type { Course, CourseColor, CourseSchedule } from "@/types/course";
 import type { Student } from "@/types/user";
 
 export const courseKeys = {
@@ -76,6 +76,7 @@ export interface CreateCourseInput {
   name: string;
   subject: string;
   description?: string;
+  schedule?: CourseSchedule;
 }
 
 export function useCreateCourse() {
@@ -134,6 +135,7 @@ export interface UpdateCourseInput {
   subject: string;
   description?: string;
   color?: CourseColor;
+  schedule?: CourseSchedule;
 }
 
 export function useUpdateCourse(courseId: string) {

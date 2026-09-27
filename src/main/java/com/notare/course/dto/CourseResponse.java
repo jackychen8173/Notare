@@ -15,6 +15,7 @@ public record CourseResponse(
         String description,
         String joinCode,
         CourseColor color,
+        CourseSchedule schedule,
         LocalDateTime archivedAt
 ) {
     public static CourseResponse from(Course course) {
@@ -27,6 +28,7 @@ public record CourseResponse(
                 course.getDescription(),
                 course.getJoinCode(),
                 course.getColor(),
+                CourseSchedule.from(course),
                 course.getArchivedAt()
         );
     }
@@ -44,6 +46,7 @@ public record CourseResponse(
                 course.getDescription(),
                 null,
                 course.getColor(),
+                CourseSchedule.from(course),
                 course.getArchivedAt()
         );
     }

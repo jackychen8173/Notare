@@ -75,6 +75,10 @@ A course-scoped forum and a "message my tutor privately" feature, built as one t
 
 **Verified against a real local backend + Postgres**, the first post-launch feature whose actual flows were exercised end-to-end rather than checked by reading code: 34/35 scripted end-to-end checks pass, including raw-JSON checks that anonymized responses carry no trace of the author. See `CHANGELOG.md` 2026-09-24 (4). The one failure is pre-existing and app-wide: **`@PreAuthorize` role denials return 500, not 403**, on every role-gated endpoint, because `GlobalExceptionHandler`'s catch-all `@ExceptionHandler(Exception.class)` swallows Spring Security's `AuthorizationDeniedException`. No data leaks, and it's fixed as of 2026-09-25 by a dedicated `AccessDeniedException` handler returning 403 (see `CHANGELOG.md` 2026-09-25). Deployed to production 2026-09-25 (PR #17, via manual `railway up`), but no discussion flow has been exercised against production yet.
 
+## Course schedule + calendar (post-launch, complete, not deployed)
+
+Each course can have an optional weekly meeting schedule (days, start/end time, optional term dates; `V20__add_course_schedule.sql`), edited in the course's New/Edit dialogs and shown on its banner. `/calendar` (tutor) and `/student/calendar` show class meetings, assignment due dates and 1:1 sessions on **FullCalendar 6** (not 7; see `CHANGELOG.md` 2026-09-27 (3)), assembled on the client from existing endpoints. On update, `schedule: null` means "keep"; empty days clears it. Duplicating a course doesn't copy its schedule. Quizzes have no due date, so they aren't on the calendar. Verified against a local backend + Postgres (27 API + 20 browser checks), not yet deployed.
+
 ## CI/CD (post-launch, in progress)
 
 Goal: `main` becomes a protected trunk (no direct pushes, only updated via PR merge, PR requires the CI check to pass) that Vercel/Railway both deploy to production from; `develop` is the everyday working branch.

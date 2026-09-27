@@ -8,6 +8,8 @@ public record CreateCourseRequest(
         @NotBlank String subject,
         String description,
         // Optional: when omitted, the least-used color among the tutor's active courses is picked.
-        CourseColor color
+        CourseColor color,
+        // Optional: when omitted, the course has no meeting schedule.
+        CourseSchedule schedule
 ) {
 }
