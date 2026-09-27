@@ -1,6 +1,7 @@
 package com.notare.course;
 
 import com.notare.course.dto.CourseResponse;
+import com.notare.course.dto.CourseSchedule;
 import com.notare.course.dto.CreateCourseRequest;
 import com.notare.course.dto.DuplicateCourseRequest;
 import com.notare.course.dto.UpdateCourseRequest;
@@ -14,9 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.SecureRandom;
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -58,6 +61,9 @@ public class CourseService {
                 .joinCode(generateUniqueJoinCode())
                 .color(request.color() != null ? request.color() : nextColor(tutor, null))
                 .build();
+        if (request.schedule() != null) {
+            applySchedule(course, request.schedule());
+        }
 
         courseRepository.save(course);
 
@@ -78,6 +84,8 @@ public class CourseService {
                 .subject(source.getSubject())
                 .description(source.getDescription())
                 .joinCode(generateUniqueJoinCode())
+                // The meeting schedule isn't copied either: parallel sections meet at different times,
+                // and a reused course is for a different term.
                 // Never the source's color, so parallel sections are easy to tell apart.
                 .color(nextColor(source.getTutor(), source.getColor()))
                 .build());
@@ -103,6 +111,9 @@ public class CourseService {
         course.setDescription(request.description());
         if (request.color() != null) {
             course.setColor(request.color());
+        }
+        if (request.schedule() != null) {
+            applySchedule(course, request.schedule());
         }
         courseRepository.save(course);
 
@@ -153,6 +164,35 @@ public class CourseService {
         }
 
         enrollmentRepository.deleteByStudentIdAndCourseId(studentId, course.getId());
+    }
+
+    /**
+     * Replaces the course's meeting schedule. Meeting days need both times, with the end after the
+     * start; times without days are rejected rather than silently dropped. Empty days clear the
+     * weekly meeting; the term dates are kept or cleared independently.
+     */
+    private void applySchedule(Course course, CourseSchedule schedule) {
+        boolean hasDays = schedule.days() != null && !schedule.days().isEmpty();
+        if (hasDays) {
+            if (schedule.startTime() == null || schedule.endTime() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Meeting days need a start and end time");
+            }
+            if (!schedule.endTime().isAfter(schedule.startTime())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "End time must be after start time");
+            }
+        } else if (schedule.startTime() != null || schedule.endTime() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Pick at least one meeting day");
+        }
+        if (schedule.termStart() != null && schedule.termEnd() != null
+                && schedule.termEnd().isBefore(schedule.termStart())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Term end must be on or after term start");
+        }
+
+        course.setMeetingDays(hasDays ? EnumSet.copyOf(schedule.days()) : EnumSet.noneOf(DayOfWeek.class));
+        course.setMeetingStartTime(hasDays ? schedule.startTime() : null);
+        course.setMeetingEndTime(hasDays ? schedule.endTime() : null);
+        course.setTermStartDate(schedule.termStart());
+        course.setTermEndDate(schedule.termEnd());
     }
 
     /**
