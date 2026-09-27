@@ -37,6 +37,7 @@ import { useCreateAssignment, useCourseAssignments } from "@/hooks/useAssignment
 import {
   useArchiveCourse,
   useCourse,
+  useDuplicateCourse,
   useEnrolledStudents,
   useRegenerateJoinCode,
   useRemoveStudent,
@@ -422,6 +423,74 @@ function EditCourseDialog({ course }: { course: Course }) {
   );
 }
 
+const duplicateCourseSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+});
+
+type DuplicateCourseValues = z.infer<typeof duplicateCourseSchema>;
+
+function DuplicateCourseDialog({ course }: { course: Course }) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const duplicateCourse = useDuplicateCourse(course.id);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<DuplicateCourseValues>({
+    resolver: zodResolver(duplicateCourseSchema),
+    values: { name: `${course.name} (copy)` },
+  });
+
+  function onSubmit(values: DuplicateCourseValues) {
+    duplicateCourse.mutate(values.name, {
+      onSuccess: (copy) => {
+        setOpen(false);
+        router.push(`/courses/${copy.id}`);
+      },
+    });
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (!nextOpen) reset();
+      }}
+    >
+      <DialogTrigger render={<Button variant="outline">Duplicate</Button>} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Duplicate course</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            Creates a separate course with its own join code, for another section or a new school year.
+            Topics, materials, grade categories, assignments, rubrics, and quizzes are copied. Students,
+            submissions, announcements, and discussions are not. Due dates are kept as-is, so update them
+            if needed.
+          </p>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="duplicate-name">New course name</Label>
+            <Input id="duplicate-name" {...register("name")} />
+            {errors.name ? <p className="text-xs text-destructive">{errors.name.message}</p> : null}
+          </div>
+          {duplicateCourse.isError ? (
+            <p className="text-xs text-destructive">Couldn&apos;t duplicate the course. Please try again.</p>
+          ) : null}
+          <DialogFooter>
+            <Button type="submit" disabled={duplicateCourse.isPending}>
+              {duplicateCourse.isPending ? "Duplicating..." : "Duplicate course"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function ArchiveControl({ course }: { course: Course }) {
   const archiveCourse = useArchiveCourse(course.id);
   const unarchiveCourse = useUnarchiveCourse(course.id);
@@ -490,8 +559,9 @@ export default function CourseDetailPage({ params }: { params: Promise<{ id: str
           {course.data.description ? (
             <p className="mt-2 text-sm text-muted-foreground">{course.data.description}</p>
           ) : null}
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             <EditCourseDialog course={course.data} />
+            <DuplicateCourseDialog course={course.data} />
             <ArchiveControl course={course.data} />
           </div>
         </div>

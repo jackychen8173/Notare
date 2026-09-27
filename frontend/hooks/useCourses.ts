@@ -87,6 +87,19 @@ export function useCreateCourse() {
   });
 }
 
+export function useDuplicateCourse(courseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const res = await api.post<ApiEnvelope<Course>>(`/api/courses/${courseId}/duplicate`, { name });
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: courseKeys.all });
+    },
+  });
+}
+
 export function useRemoveStudent(courseId: string) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -3,6 +3,7 @@ package com.notare.course;
 import com.notare.common.ApiResponse;
 import com.notare.course.dto.CourseResponse;
 import com.notare.course.dto.CreateCourseRequest;
+import com.notare.course.dto.DuplicateCourseRequest;
 import com.notare.course.dto.UpdateCourseRequest;
 import com.notare.student.dto.StudentResponse;
 import jakarta.validation.Valid;
@@ -63,6 +64,16 @@ public class CourseController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(ApiResponse.success(courseService.updateCourse(id, request, authentication.getName())));
+    }
+
+    @PostMapping("/{id}/duplicate")
+    public ResponseEntity<ApiResponse<CourseResponse>> duplicateCourse(
+            @PathVariable UUID id,
+            @Valid @RequestBody DuplicateCourseRequest request,
+            Authentication authentication
+    ) {
+        CourseResponse response = courseService.duplicateCourse(id, request, authentication.getName());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
     @PostMapping("/{id}/archive")
