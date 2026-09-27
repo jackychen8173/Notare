@@ -2,6 +2,14 @@
 
 Notable changes to this project, most recent first. See `CLAUDE.md` for when to add an entry.
 
+## 2026-09-27
+
+- **Duplicate course**, for teaching several sections of the same class (the user teaches multiple AP CSA periods) or reusing a course in a later year. Discussed with the user first: one course per section rather than a sections-within-a-course model, which would have touched the gradebook, discussion visibility and announcements. Copies are fully independent, with no link back to the source.
+  - `POST /api/courses/{id}/duplicate` with `{ name }`, which returns 201 and the new course. Tutor-owned only (the same 404-not-403 ownership check). Archived sources are allowed; the copy always starts active with a fresh join code.
+  - **Copied** (`course/CourseContentCopier.java`): topics, grade categories, materials, assignments with their rubrics and criteria, and quizzes with their questions and options. Topic and category references are remapped to the copy's own rows. Due dates are kept as-is. A published quiz stays published, since parallel sections want the same quizzes live, and a draft stays a draft. **Not copied**: enrollments, submissions, quiz attempts, announcements, discussions, sessions.
+  - Frontend: a "Duplicate" button and dialog on the tutor course page (the name defaults to "… (copy)"), which navigates to the new course.
+  - **Verified against a live local backend and Postgres**: 39/39 scripted checks pass. They cover auth (another tutor gets 404, a student 403, no login 401, a blank name 400), duplicating an archived source, remapped topic/category IDs, rubric criteria, quiz questions with the correct MC/TF answers, that editing the copy leaves the source unchanged, and that a student can join with the new code. Backend compile and frontend build/lint also pass (only the 3 existing warnings).
+
 ## 2026-09-25
 
 - **`@PreAuthorize` role denials now return 403, not 500.** This fixes the app-wide bug found during the 2026-09-24 (4) discussions testing. `GlobalExceptionHandler` gets a dedicated `@ExceptionHandler(AccessDeniedException.class)`, which covers Spring Security 7's `AuthorizationDeniedException`. The handler returns 403 with the body `"Access denied"`. The exception is thrown inside the controller call, so it reaches the `@RestControllerAdvice` before Spring Security's filter sees it, and the catch-all `Exception` handler was turning it into a 500. Verified against a live local backend + Postgres: a STUDENT calling `GET /api/courses` (tutor-only) gets 403 (it was 500), and an unauthenticated call still gets 401.

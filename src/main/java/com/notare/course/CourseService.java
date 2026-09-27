@@ -2,6 +2,7 @@ package com.notare.course;
 
 import com.notare.course.dto.CourseResponse;
 import com.notare.course.dto.CreateCourseRequest;
+import com.notare.course.dto.DuplicateCourseRequest;
 import com.notare.course.dto.UpdateCourseRequest;
 import com.notare.student.dto.StudentResponse;
 import com.notare.user.User;
@@ -30,15 +31,18 @@ public class CourseService {
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
+    private final CourseContentCopier courseContentCopier;
 
     public CourseService(
             CourseRepository courseRepository,
             EnrollmentRepository enrollmentRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            CourseContentCopier courseContentCopier
     ) {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
+        this.courseContentCopier = courseContentCopier;
     }
 
     public CourseResponse createCourse(CreateCourseRequest request, String tutorEmail) {
@@ -55,6 +59,27 @@ public class CourseService {
         courseRepository.save(course);
 
         return CourseResponse.from(course);
+    }
+
+    /**
+     * Creates a new course for the same tutor with a copy of the source's content and a fresh join
+     * code, for running parallel sections or reusing a course in a later year. Archived sources are
+     * allowed (reusing last year's archived course is a main use); the copy always starts active.
+     */
+    public CourseResponse duplicateCourse(UUID courseId, DuplicateCourseRequest request, String tutorEmail) {
+        Course source = requireOwnedCourse(courseId, tutorEmail);
+
+        Course copy = courseRepository.save(Course.builder()
+                .tutor(source.getTutor())
+                .name(request.name())
+                .subject(source.getSubject())
+                .description(source.getDescription())
+                .joinCode(generateUniqueJoinCode())
+                .build());
+
+        courseContentCopier.copy(source, copy);
+
+        return CourseResponse.from(copy);
     }
 
     public CourseResponse regenerateJoinCode(UUID courseId, String tutorEmail) {
