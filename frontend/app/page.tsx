@@ -1,133 +1,137 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconBackpack, IconChalkboard, IconCheck } from "@tabler/icons-react";
 
+import { ApprovalPreview } from "@/components/landing/ApprovalPreview";
+import { DemoButtons } from "@/components/landing/DemoButtons";
+import {
+  CalendarFragment,
+  DiscussionFragment,
+  QuizFragment,
+  RunFragment,
+} from "@/components/landing/FeatureFragments";
+import { BrandMark } from "@/components/layout/Sidebar";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSession } from "@/lib/auth";
+import type { UserRole } from "@/types/user";
 
-const teacherFeatures = [
-  "Manage students and courses",
-  "Schedule sessions and keep notes",
-  "Review assignments and submissions",
-];
+const ROLE_HOME: Record<UserRole, string> = {
+  TUTOR: "/dashboard",
+  STUDENT: "/student/dashboard",
+  ADMIN: "/admin/dashboard",
+};
 
-const studentFeatures = [
-  "View your courses and assignments",
-  "Submit your work",
-  "Track your session history",
-  "See feedback and grades once your tutor releases them",
+const FEATURES: { title: string; body: string; fragment: ReactNode }[] = [
+  {
+    title: "Java that runs in the browser",
+    body: "Students write in a real code editor and press Run. Their code compiles and runs in an isolated sandbox, so they see output and errors before they submit.",
+    fragment: <RunFragment />,
+  },
+  {
+    title: "Every section on one calendar",
+    body: "Give each class its meeting times and a color. Class meetings, due dates and one-on-one sessions show up on a shared calendar for you and your students.",
+    fragment: <CalendarFragment />,
+  },
+  {
+    title: "Quizzes that grade themselves",
+    body: "Multiple choice and true/false are scored the moment a student submits. Short answers come to you, with a suggested score from Sage when you want one.",
+    fragment: <QuizFragment />,
+  },
+  {
+    title: "A place for the questions students hesitate to ask",
+    body: "Each course has a forum where students can post anonymously to classmates, plus private threads that go straight to you.",
+    fragment: <DiscussionFragment />,
+  },
 ];
 
 export default function Home() {
   const router = useRouter();
-  const [checkingSession, setCheckingSession] = useState(true);
 
+  // Signed-in visitors go straight to their app. The landing page renders immediately for everyone
+  // else rather than waiting on this check, since most visitors here aren't signed in.
   useEffect(() => {
     const session = getSession();
-    if (session) {
-      router.replace(session.role === "TUTOR" ? "/dashboard" : "/student/dashboard");
-    } else {
-      // getSession() reads localStorage, unavailable during SSR — this can only
-      // be determined after mount, so it isn't derivable during render.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCheckingSession(false);
-    }
+    if (session) router.replace(ROLE_HOME[session.role]);
   }, [router]);
 
-  if (checkingSession) return null;
-
   return (
-    <div className="mx-auto flex min-h-screen max-w-4xl flex-col items-center gap-12 px-6 py-16">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-xl font-semibold text-primary-foreground shadow-elevated">
-          N
-        </span>
-        <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">Notare</h1>
-        <p className="max-w-md text-balance text-muted-foreground">
-          Tutoring management with Sage, an AI assistant that drafts session notes and
-          assignment feedback for tutors to review before students ever see them.
-        </p>
-      </div>
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
+        <BrandMark />
+        <nav className="flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
+          <Button nativeButton={false} variant="ghost" render={<Link href="/login" />}>
+            Sign in
+          </Button>
+          <Button nativeButton={false} variant="outline" render={<Link href="/register" />} className="hidden sm:inline-flex">
+            Create account
+          </Button>
+        </nav>
+      </header>
 
-      <div className="grid w-full gap-6 sm:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <span className="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
-                <IconChalkboard className="size-5" stroke={1.75} />
-              </span>
-              <CardTitle>For Teachers</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="flex h-full flex-col gap-4">
-            <ul className="flex flex-col gap-2 text-sm">
-              {teacherFeatures.map((feature) => (
-                <li key={feature} className="flex items-start gap-2">
-                  <IconCheck className="mt-0.5 size-4 shrink-0 text-primary" stroke={2} />
-                  <span>{feature}</span>
-                </li>
-              ))}
-              <li className="flex items-start gap-2 rounded-lg border border-sage-border bg-sage-surface p-2">
-                <IconCheck className="mt-0.5 size-4 shrink-0 text-sage-text" stroke={1.75} />
-                <span className="text-sage-text">
-                  Get Sage AI-drafted feedback you approve before students see it
-                </span>
-              </li>
-            </ul>
-            <div className="mt-auto flex gap-2">
-              <Button nativeButton={false} render={<Link href="/register" />} className="flex-1">
-                Sign up
-              </Button>
-              <Button
-                nativeButton={false}
-                render={<Link href="/login" />}
-                variant="outline"
-                className="flex-1"
-              >
-                Sign in
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+      <main className="flex-1">
+        <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-4 pt-10 pb-20 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-16 lg:pt-16 lg:pb-28">
+          <div className="flex min-w-0 flex-col gap-6">
+            <h1 className="max-w-xl text-4xl leading-[1.08] font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-5xl lg:text-[3.4rem]">
+              Feedback on student code, drafted by AI and approved by you.
+            </h1>
+            <p className="max-w-lg text-lg leading-relaxed text-muted-foreground">
+              Notare is a classroom for AP Computer Science A. Assign Java, give quizzes, keep a class calendar,
+              and let Sage draft feedback that students only see after you&apos;ve checked it.
+            </p>
+            <DemoButtons className="mt-2" />
+          </div>
+          <ApprovalPreview />
+        </section>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <span className="flex size-9 items-center justify-center rounded-lg bg-primary-soft text-primary">
-                <IconBackpack className="size-5" stroke={1.75} />
-              </span>
-              <CardTitle>For Students</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="flex h-full flex-col gap-4">
-            <ul className="flex flex-col gap-2 text-sm">
-              {studentFeatures.map((feature) => (
-                <li key={feature} className="flex items-start gap-2">
-                  <IconCheck className="mt-0.5 size-4 shrink-0 text-primary" stroke={2} />
-                  <span>{feature}</span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-auto flex gap-2">
-              <Button nativeButton={false} render={<Link href="/register" />} className="flex-1">
-                Sign up
-              </Button>
-              <Button
-                nativeButton={false}
-                render={<Link href="/login" />}
-                variant="outline"
-                className="flex-1"
+        <section className="border-t border-border bg-card/60">
+          <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-4 py-20 sm:px-6 lg:gap-24 lg:py-28">
+            <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl">
+              Everything else a CS class runs on, in the same place.
+            </h2>
+            {FEATURES.map((feature, index) => (
+              <div
+                key={feature.title}
+                className="grid grid-cols-1 items-center gap-8 md:grid-cols-2 md:gap-14"
               >
-                Sign in
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                <div className={index % 2 === 1 ? "md:order-2" : undefined}>
+                  <h3 className="text-xl font-semibold tracking-tight text-foreground">{feature.title}</h3>
+                  <p className="mt-3 max-w-md leading-relaxed text-muted-foreground">{feature.body}</p>
+                </div>
+                <div className="w-full max-w-md md:justify-self-center">{feature.fragment}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mx-auto flex w-full max-w-6xl flex-col items-start gap-6 px-4 py-20 sm:px-6 lg:py-24">
+          <h2 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl">
+            See it with a class already in progress.
+          </h2>
+          <p className="max-w-xl leading-relaxed text-muted-foreground">
+            Each demo is your own private copy: a teacher, four students, two sections, and a few weeks of
+            assignments, quizzes and discussions. Nothing you change there affects anyone else.
+          </p>
+          <DemoButtons />
+        </section>
+      </main>
+
+      <footer className="border-t border-border">
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-6 text-sm text-muted-foreground sm:px-6">
+          <BrandMark />
+          <div className="flex gap-5">
+            <Link href="/login" className="hover:text-foreground">
+              Sign in
+            </Link>
+            <Link href="/register" className="hover:text-foreground">
+              Create account
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

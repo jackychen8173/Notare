@@ -15,4 +15,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findByRole(UserRole role);
 
     long countByRole(UserRole role);
+
+    long countByRoleAndDemoFalse(UserRole role);
 }

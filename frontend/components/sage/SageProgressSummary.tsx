@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { api, type ApiEnvelope } from "@/lib/api";
 import type { ProgressSummary } from "@/types/sage";
+import { DemoDisabledNote } from "@/components/layout/DemoDisabledNote";
+import { useIsDemo } from "@/hooks/useIsDemo";
 
 async function fetchProgressSummary(studentId: string): Promise<ProgressSummary> {
   const res = await api.get<ApiEnvelope<ProgressSummary>>(
@@ -17,12 +19,17 @@ interface SageProgressSummaryProps {
 }
 
 export function SageProgressSummary({ studentId }: SageProgressSummaryProps) {
+  const isDemo = useIsDemo();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["sage", "student-progress", studentId],
     queryFn: () => fetchProgressSummary(studentId),
-    enabled: !!studentId,
+    enabled: !!studentId && !isDemo,
     retry: false,
   });
+
+  if (isDemo) {
+    return <DemoDisabledNote feature="Sage's progress summary" />;
+  }
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">Asking Sage for a summary...</p>;

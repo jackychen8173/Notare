@@ -19,7 +19,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
 
     List<Submission> findByAssignment_Course_Tutor_Id(UUID tutorId);
 
-    long countByReleasedAtIsNull();
+    long countByReleasedAtIsNullAndStudent_DemoFalse();
 
-    long countByReleasedAtIsNotNull();
+    long countByReleasedAtIsNotNullAndStudent_DemoFalse();
+
 }

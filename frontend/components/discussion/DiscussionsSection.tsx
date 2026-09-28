@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 
-import { authorLabel, errorMessage } from "@/components/discussion/discussionUtils";
+import { authorLabel } from "@/components/discussion/discussionUtils";
+import { errorMessage } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

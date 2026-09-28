@@ -13,4 +13,5 @@ export interface AdminDashboardStats {
   courseCount: number;
   submissionsPending: number;
   submissionsReleased: number;
+  openProblemReports: number;
 }

@@ -18,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Notare",
-  description: "Tutoring management platform with the Sage AI assistant",
+  description: "A classroom for AP Computer Science A, with AI-drafted feedback that teachers approve before students see it.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

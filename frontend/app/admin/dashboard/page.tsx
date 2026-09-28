@@ -1,6 +1,6 @@
 "use client";
 
-import { IconBook2, IconCircleCheck, IconClock, IconSchool, IconUsers } from "@tabler/icons-react";
+import { IconBook2, IconCircleCheck, IconClock, IconMessageReport, IconSchool, IconUsers } from "@tabler/icons-react";
 
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,7 +42,7 @@ export default function AdminDashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" description="Platform-wide overview of every tutor and student." />
+      <PageHeader title="Dashboard" description="Platform-wide overview of every tutor and student (demo accounts excluded)." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard icon={IconSchool} label="Tutors" value={dashboard.data?.tutorCount} isLoading={dashboard.isLoading} />
         <StatCard icon={IconUsers} label="Students" value={dashboard.data?.studentCount} isLoading={dashboard.isLoading} />
@@ -57,6 +57,12 @@ export default function AdminDashboardPage() {
           icon={IconCircleCheck}
           label="Submissions released"
           value={dashboard.data?.submissionsReleased}
+          isLoading={dashboard.isLoading}
+        />
+        <StatCard
+          icon={IconMessageReport}
+          label="Open problem reports"
+          value={dashboard.data?.openProblemReports}
           isLoading={dashboard.isLoading}
         />
       </div>

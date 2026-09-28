@@ -8,6 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useDraftSessionNotes, useSaveSessionNotes } from "@/hooks/useSessions";
 import type { SessionNote } from "@/types/session";
+import { DemoDisabledNote } from "@/components/layout/DemoDisabledNote";
+import { useIsDemo } from "@/hooks/useIsDemo";
+import { errorMessage } from "@/lib/api";
 
 interface SessionNoteFormProps {
   sessionId: string;
@@ -22,6 +25,7 @@ export function SessionNoteForm({ sessionId, note }: SessionNoteFormProps) {
   const [rawNotes, setRawNotes] = useState(note?.rawNotes ?? "");
   const saveNotes = useSaveSessionNotes(sessionId);
   const draftNotes = useDraftSessionNotes(sessionId);
+  const isDemo = useIsDemo();
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,12 +51,14 @@ export function SessionNoteForm({ sessionId, note }: SessionNoteFormProps) {
             type="button"
             size="sm"
             variant="outline"
-            disabled={!note?.rawNotes || draftNotes.isPending}
+            disabled={isDemo || !note?.rawNotes || draftNotes.isPending}
             onClick={() => draftNotes.mutate()}
           >
             {draftNotes.isPending ? "Drafting..." : "Draft with Sage"}
           </Button>
         </div>
+        {isDemo ? <DemoDisabledNote /> : null}
+        {draftNotes.isError ? <p className="text-xs text-destructive">{errorMessage(draftNotes.error)}</p> : null}
       </div>
 
       {note?.formattedNotes ? <SageNotesDraft formattedNotes={note.formattedNotes} /> : null}

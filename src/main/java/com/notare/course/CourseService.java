@@ -207,7 +207,8 @@ public class CourseService {
                 .orElse(CourseColor.TEAL);
     }
 
-    private String generateUniqueJoinCode() {
+    /** Also used by the demo seeder, which creates courses without going through createCourse. */
+    public String generateUniqueJoinCode() {
         for (int attempt = 0; attempt < MAX_JOIN_CODE_ATTEMPTS; attempt++) {
             StringBuilder code = new StringBuilder(JOIN_CODE_LENGTH);
             for (int i = 0; i < JOIN_CODE_LENGTH; i++) {

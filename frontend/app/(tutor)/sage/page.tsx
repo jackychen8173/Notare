@@ -15,6 +15,8 @@ import {
   useSageConversations,
   useSendSageMessage,
 } from "@/hooks/useSageChat";
+import { useIsDemo } from "@/hooks/useIsDemo";
+import { errorMessage } from "@/lib/api";
 
 export default function SagePage() {
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -23,6 +25,7 @@ export default function SagePage() {
   const conversations = useSageConversations();
   const conversation = useSageConversation(activeId);
   const sendMessage = useSendSageMessage();
+  const isDemo = useIsDemo();
   const confirmAction = useConfirmSageAction();
   const declineAction = useDeclineSageAction();
 
@@ -66,8 +69,16 @@ export default function SagePage() {
           )}
         </div>
       </div>
+      {isDemo ? (
+        <p className="text-sm text-muted-foreground">
+          Sage chat is turned off in the demo. With a real account, you can ask Sage to look up students,
+          draft feedback, create assignments and more.
+        </p>
+      ) : null}
+      {sendMessage.isError ? <p className="text-sm text-destructive">{errorMessage(sendMessage.error)}</p> : null}
       <div className="flex gap-2">
         <Input
+          disabled={isDemo}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
@@ -75,7 +86,7 @@ export default function SagePage() {
           }}
           placeholder="Ask Sage..."
         />
-        <Button onClick={handleSend} disabled={sendMessage.isPending}>
+        <Button onClick={handleSend} disabled={isDemo || sendMessage.isPending}>
           {sendMessage.isPending ? "Sending..." : "Send"}
         </Button>
       </div>

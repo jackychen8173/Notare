@@ -14,5 +14,7 @@ public interface CourseRepository extends JpaRepository<Course, UUID> {
 
     Optional<Course> findByJoinCode(String joinCode);
 
+    long countByTutor_DemoFalse();
+
     boolean existsByJoinCode(String joinCode);
 }

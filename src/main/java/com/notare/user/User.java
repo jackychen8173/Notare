@@ -46,6 +46,11 @@ public class User {
     @Column(nullable = false)
     private boolean active = true;
 
+    // Created by the landing page's one-click demo; see V21__add_user_demo_flag.sql.
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean demo = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
