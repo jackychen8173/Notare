@@ -86,3 +86,13 @@ export function formToSchedule(values: ScheduleFormValues): CourseSchedule {
     termEnd: values.termEnd || null,
   };
 }
+
+/** Whether the course's weekly meeting falls on this date (within the term, when term dates are set). */
+export function meetsOn(schedule: CourseSchedule | null, date: Date): boolean {
+  if (!schedule || schedule.days.length === 0 || !schedule.startTime) return false;
+  if (!schedule.days.some((day) => weekdayIndex(day) === date.getDay())) return false;
+  const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  if (schedule.termStart && iso < schedule.termStart) return false;
+  if (schedule.termEnd && iso > schedule.termEnd) return false;
+  return true;
+}

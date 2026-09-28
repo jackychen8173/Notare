@@ -1,13 +1,13 @@
 "use client";
 
-import { IconBook2, IconCalendar, IconLayoutDashboard, IconMessageChatbot, IconUsers } from "@tabler/icons-react";
+import { IconBook2, IconCalendar, IconHome, IconMessageChatbot, IconUsers } from "@tabler/icons-react";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useCourses } from "@/hooks/useCourses";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
+  { href: "/dashboard", label: "Home", icon: IconHome },
   { href: "/students", label: "Students", icon: IconUsers },
   { href: "/courses", label: "Courses", icon: IconBook2 },
   { href: "/calendar", label: "Calendar", icon: IconCalendar },
@@ -20,7 +20,7 @@ export default function TutorLayout({ children }: { children: React.ReactNode })
   if (!authorized) return null;
 
   return (
-    <AppShell navItems={navItems} courses={{ basePath: "/courses", items: courses.data }} profileHref="/profile">
+    <AppShell role="tutor" navItems={navItems} courses={{ basePath: "/courses", items: courses.data }} profileHref="/profile">
       {children}
     </AppShell>
   );

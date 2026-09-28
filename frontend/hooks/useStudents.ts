@@ -20,8 +20,8 @@ async function fetchStudent(id: string): Promise<Student> {
   return res.data.data;
 }
 
-export function useStudents() {
-  return useQuery({ queryKey: studentKeys.all, queryFn: fetchStudents });
+export function useStudents(options: { enabled?: boolean } = {}) {
+  return useQuery({ queryKey: studentKeys.all, queryFn: fetchStudents, enabled: options.enabled ?? true });
 }
 
 export function useStudent(id: string) {
