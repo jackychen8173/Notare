@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (!authorized) return null;
 
   return (
-    <AppShell navItems={navItems} profileHref="/admin/profile">
+    <AppShell role="admin" navItems={navItems} profileHref="/admin/profile">
       {children}
     </AppShell>
   );
