@@ -5,6 +5,7 @@ public record AdminDashboardResponse(
         long studentCount,
         long courseCount,
         long submissionsPending,
-        long submissionsReleased
+        long submissionsReleased,
+        long openProblemReports
 ) {
 }

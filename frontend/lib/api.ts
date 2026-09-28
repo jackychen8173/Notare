@@ -37,3 +37,11 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+/** The backend's error message for a failed request (ApiResponse.message), or a generic fallback. */
+export function errorMessage(error: unknown): string {
+  if (axios.isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message ?? "Something went wrong. Try again.";
+  }
+  return "Something went wrong. Try again.";
+}

@@ -79,6 +79,10 @@ A course-scoped forum and a "message my tutor privately" feature, built as one t
 
 Each course can have an optional weekly meeting schedule (days, start/end time, optional term dates; `V20__add_course_schedule.sql`), edited in the course's New/Edit dialogs and shown on its banner. `/calendar` (tutor) and `/student/calendar` show class meetings, assignment due dates and 1:1 sessions on **FullCalendar 6** (not 7; see `CHANGELOG.md` 2026-09-27 (3)), assembled on the client from existing endpoints. On update, `schedule: null` means "keep"; empty days clears it. Duplicating a course doesn't copy its schedule. Quizzes have no due date, so they aren't on the calendar. Verified against a local backend + Postgres (27 API + 20 browser checks). Deployed to production 2026-09-27 (PR #21, manual `railway up`; V20 applied), but no schedule/calendar flow has been exercised against production yet.
 
+## Demo, problem reports, sign out, landing page (post-launch, complete, not deployed)
+
+The landing page (`app/page.tsx`) is aimed at people arriving from the user's resume: an interactive preview of the Sage review step, feature rows, and "Try it as a teacher / student". Those buttons call `POST /api/auth/demo`, which seeds a **fresh private classroom per click** (`com.notare.demo.DemoSeeder`) and signs in to it. Demo accounts (`users.demo`, `V21`) can't use Sage or code Run (`DemoRestrictionInterceptor` is the single enforcement point; add any new paid endpoint to it), and they're excluded from admin lists and counts. Demo rows are never cleaned up, by the user's choice. "Report a problem" (account menu, `V22`, `com.notare.report`) is triaged at `/admin/reports`. The account menu also has the app's first sign-out. See `CHANGELOG.md` 2026-09-27 (4). The admin Reports page is unverified locally (no local admin account).
+
 ## CI/CD (post-launch, in progress)
 
 Goal: `main` becomes a protected trunk (no direct pushes, only updated via PR merge, PR requires the CI check to pass) that Vercel/Railway both deploy to production from; `develop` is the everyday working branch.

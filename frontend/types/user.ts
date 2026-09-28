@@ -6,6 +6,9 @@ export interface AuthSession {
   name: string;
   email: string;
   role: UserRole;
+  // One-click demo account from the landing page: sample data, Sage and code Run turned off.
+  // Optional because sessions saved before this field existed don't have it.
+  demo?: boolean;
 }
 
 // Single combined Google sign-in-or-sign-up response: an existing account logs straight in

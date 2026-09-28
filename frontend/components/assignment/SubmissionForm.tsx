@@ -12,6 +12,9 @@ import { Label } from "@/components/ui/label";
 import { useRunCode } from "@/hooks/useCodeRun";
 import { useSubmitAssignment } from "@/hooks/useSubmissions";
 import type { CodeRunResult } from "@/types/codeRun";
+import { DemoDisabledNote } from "@/components/layout/DemoDisabledNote";
+import { useIsDemo } from "@/hooks/useIsDemo";
+import { errorMessage } from "@/lib/api";
 
 const submissionSchema = z.object({
   content: z.string().min(1, "Write your code before submitting"),
@@ -26,6 +29,7 @@ interface SubmissionFormProps {
 export function SubmissionForm({ assignmentId }: SubmissionFormProps) {
   const submitAssignment = useSubmitAssignment(assignmentId);
   const runCode = useRunCode(assignmentId);
+  const isDemo = useIsDemo();
   const [runResult, setRunResult] = useState<CodeRunResult | null>(null);
   const {
     control,
@@ -65,7 +69,7 @@ export function SubmissionForm({ assignmentId }: SubmissionFormProps) {
         <Button
           type="button"
           variant="outline"
-          disabled={runCode.isPending || !content?.trim()}
+          disabled={isDemo || runCode.isPending || !content?.trim()}
           onClick={handleRun}
         >
           {runCode.isPending ? "Running..." : "Run"}
@@ -75,9 +79,8 @@ export function SubmissionForm({ assignmentId }: SubmissionFormProps) {
         </Button>
       </div>
 
-      {runCode.isError ? (
-        <p className="text-sm text-destructive">Couldn&apos;t run your code. Try again.</p>
-      ) : null}
+      {isDemo ? <DemoDisabledNote feature="Running code" /> : null}
+      {runCode.isError ? <p className="text-sm text-destructive">{errorMessage(runCode.error)}</p> : null}
       {runResult ? <CodeOutputPanel result={runResult} /> : null}
 
       {submitAssignment.isError ? (

@@ -136,6 +136,6 @@ public class AuthService {
 
     private AuthResponse toAuthResponse(User user) {
         String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
-        return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole());
+        return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole(), user.isDemo());
     }
 }

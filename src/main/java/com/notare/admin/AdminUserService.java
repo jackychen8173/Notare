@@ -26,6 +26,7 @@ public class AdminUserService {
     public List<AdminUserResponse> listUsers(UserRole role, Boolean active) {
         return userRepository.findAll().stream()
                 .filter(user -> user.getRole() != UserRole.ADMIN)
+                .filter(user -> !user.isDemo())
                 .filter(user -> role == null || user.getRole() == role)
                 .filter(user -> active == null || user.isActive() == active)
                 .map(AdminUserResponse::from)
@@ -54,6 +55,7 @@ public class AdminUserService {
     private User requireManageableUser(UUID id) {
         return userRepository.findById(id)
                 .filter(user -> user.getRole() != UserRole.ADMIN)
+                .filter(user -> !user.isDemo())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 }

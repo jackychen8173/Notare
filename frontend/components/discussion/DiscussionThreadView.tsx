@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { authorLabel, errorMessage } from "@/components/discussion/discussionUtils";
+import { authorLabel } from "@/components/discussion/discussionUtils";
+import { errorMessage } from "@/lib/api";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

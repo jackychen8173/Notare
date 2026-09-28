@@ -9,6 +9,7 @@ import {
   type SidebarCourses,
   type SidebarNavItem,
 } from "@/components/layout/Sidebar";
+import { DemoBanner } from "@/components/layout/DemoBanner";
 import { TopNav } from "@/components/layout/TopNav";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 
@@ -42,6 +43,7 @@ export function AppShell({ navItems, courses, profileHref, children }: AppShellP
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <DemoBanner />
         <TopNav profileHref={profileHref} onOpenMenu={() => setMenuOpen(true)} />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-8">{children}</main>
       </div>

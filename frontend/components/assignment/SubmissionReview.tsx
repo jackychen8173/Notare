@@ -13,6 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useRubric } from "@/hooks/useRubrics";
 import { useReleaseFeedback, useReviewSubmission, useUpdateRubricScores } from "@/hooks/useSubmissions";
 import type { FeedbackStatus, Submission } from "@/types/submission";
+import { DemoDisabledNote } from "@/components/layout/DemoDisabledNote";
+import { useIsDemo } from "@/hooks/useIsDemo";
+import { errorMessage } from "@/lib/api";
 
 const statusVariant: Record<FeedbackStatus, "default" | "secondary"> = {
   PENDING: "secondary",
@@ -87,6 +90,7 @@ export function SubmissionReview({ submission }: SubmissionReviewProps) {
   const [tutorFeedback, setTutorFeedback] = useState(submission.tutorFeedback ?? "");
   const [grade, setGrade] = useState(submission.grade ?? "");
   const reviewSubmission = useReviewSubmission(submission.id);
+  const isDemo = useIsDemo();
   const releaseFeedback = useReleaseFeedback(submission.id);
 
   const isReleased = submission.releasedAt != null;
@@ -115,14 +119,21 @@ export function SubmissionReview({ submission }: SubmissionReviewProps) {
       {submission.sageFeedback ? (
         <SageFeedbackBlock feedbackJson={submission.sageFeedback} />
       ) : (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={reviewSubmission.isPending}
-          onClick={() => reviewSubmission.mutate()}
-        >
-          {reviewSubmission.isPending ? "Asking Sage..." : "Get Sage feedback"}
-        </Button>
+        <div className="flex flex-col gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            className="self-start"
+            disabled={isDemo || reviewSubmission.isPending}
+            onClick={() => reviewSubmission.mutate()}
+          >
+            {reviewSubmission.isPending ? "Asking Sage..." : "Get Sage feedback"}
+          </Button>
+          {isDemo ? <DemoDisabledNote /> : null}
+          {reviewSubmission.isError ? (
+            <p className="text-xs text-destructive">{errorMessage(reviewSubmission.error)}</p>
+          ) : null}
+        </div>
       )}
 
       <div className="flex flex-col gap-4">

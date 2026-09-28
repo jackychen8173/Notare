@@ -9,6 +9,8 @@ public record AuthResponse(
         UUID userId,
         String name,
         String email,
-        UserRole role
+        UserRole role,
+        // True for the landing page's one-click demo accounts (Sage and code Run are off for them).
+        boolean demo
 ) {
 }

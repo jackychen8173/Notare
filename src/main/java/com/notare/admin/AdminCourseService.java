@@ -35,6 +35,7 @@ public class AdminCourseService {
 
     public List<CourseResponse> listCourses() {
         return courseRepository.findAll().stream()
+                .filter(course -> !course.getTutor().isDemo())
                 .map(CourseResponse::from)
                 .toList();
     }

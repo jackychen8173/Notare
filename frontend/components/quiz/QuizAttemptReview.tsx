@@ -11,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useDraftQuizAnswerFeedback, useGradeAnswer, useReleaseAttempt } from "@/hooks/useQuizAttempts";
 import { cn } from "@/lib/utils";
 import type { AttemptStatus, QuizAnswer, QuizAttempt } from "@/types/quizAttempt";
+import { DemoDisabledNote } from "@/components/layout/DemoDisabledNote";
+import { useIsDemo } from "@/hooks/useIsDemo";
 
 const attemptStatusVariant: Record<AttemptStatus, "default" | "secondary"> = {
   IN_PROGRESS: "secondary",
@@ -75,6 +77,7 @@ function FreeTextAnswerReview({ attemptId, answer }: { attemptId: string; answer
   const [feedback, setFeedback] = useState(answer.tutorFeedback ?? "");
   const gradeAnswer = useGradeAnswer(attemptId);
   const draftFeedback = useDraftQuizAnswerFeedback(attemptId);
+  const isDemo = useIsDemo();
 
   return (
     <div className="flex flex-col gap-3">
@@ -93,12 +96,13 @@ function FreeTextAnswerReview({ attemptId, answer }: { attemptId: string; answer
           variant="outline"
           size="sm"
           className="self-start"
-          disabled={draftFeedback.isPending}
+          disabled={isDemo || draftFeedback.isPending}
           onClick={() => draftFeedback.mutate(answer.questionId)}
         >
           {draftFeedback.isPending ? "Asking Sage..." : "Get Sage suggestion"}
         </Button>
       )}
+      {isDemo && !answer.sageSuggestion ? <DemoDisabledNote /> : null}
 
       <div className="flex items-end gap-2">
         <div className="flex flex-col gap-1.5">
