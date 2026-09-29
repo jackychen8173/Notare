@@ -9,6 +9,7 @@ import { DemoDisabledNote } from "@/components/layout/DemoDisabledNote";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsDemo } from "@/hooks/useIsDemo";
@@ -169,7 +170,10 @@ function FileEditor({ file, onDelete }: { file: PracticeFile; onDelete: () => vo
           <Button size="sm" onClick={handleRun} disabled={isDemo || run.isPending || !content.trim()}>
             <IconPlayerPlay />
             {run.isPending ? "Running..." : "Run"}
-            <kbd className="ml-1 font-mono text-[0.7rem] opacity-70">Ctrl+Enter</kbd>
+            <span className="ml-1 hidden gap-0.5 sm:flex">
+              <Kbd className="border-primary-foreground/30 bg-transparent text-primary-foreground/80">Ctrl</Kbd>
+              <Kbd className="border-primary-foreground/30 bg-transparent text-primary-foreground/80">Enter</Kbd>
+            </span>
           </Button>
         </div>
       </div>

@@ -46,7 +46,7 @@ function toQueue(home: TutorHome): QueueItem[] {
     ...home.submissions.map((s) => ({
       key: `s-${s.submissionId}`,
       kind: "submission" as const,
-      title: s.attemptNumber > 1 ? `${s.assignmentTitle} · v${s.attemptNumber}` : s.assignmentTitle,
+      title: s.attemptNumber > 1 ? `${s.assignmentTitle} Â· v${s.attemptNumber}` : s.assignmentTitle,
       who: s.attemptNumber > 1 ? `${s.studentName} resubmitted` : s.studentName,
       course: s.course,
       at: s.submittedAt,
@@ -111,7 +111,7 @@ function QueueRow({ item }: { item: QueueItem }) {
         <span className={cn("hidden shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium sm:inline", TONE_CLASS[item.tag.tone])}>
           {item.tag.label}
         </span>
-        <span className="w-20 shrink-0 text-right text-xs text-muted-foreground">{item.at ? timeAgo(item.at) : ""}</span>
+        <span className="w-20 shrink-0 text-right font-mono text-[11px] text-muted-foreground">{item.at ? timeAgo(item.at) : ""}</span>
       </Link>
     </li>
   );

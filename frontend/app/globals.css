@@ -22,6 +22,10 @@
  *     (dots/accents), `bg-course-solid` (large fills behind white text), `bg-course-soft` and
  *     `text-course` inside it.
  *   - Icons: Tabler Icons (outline) only.
+ *   - Editor accents (v2.1, 2026-09-29): monospace (`font-mono`) for small uppercase eyebrow labels,
+ *     counts, versions (v2), timestamps in lists, file names and paths. Keys are always the `Kbd`
+ *     component. Code is shown with line numbers and `tok-*` syntax colors (below), never green.
+ *     Diff tints are `--diff-added` / `--diff-removed`.
  *   - `sage` / `sage-surface` / `sage-border` / `sage-text` are reserved exclusively for Sage (AI)
  *     content. Never use them (or any green) for anything else.
  */

@@ -2,13 +2,16 @@
 
 import CodeMirror, { EditorView } from "@uiw/react-codemirror";
 import { java } from "@codemirror/lang-java";
+import { syntaxHighlighting } from "@codemirror/language";
+import { classHighlighter } from "@lezer/highlight";
 import { useTheme } from "next-themes";
 
 import { cn } from "@/lib/utils";
 
 // Themed against the design tokens (app/globals.css) rather than a canned CodeMirror theme, so the
-// editor matches the rest of the app in both light and dark mode. Syntax colors come from
-// CodeMirror's own light/dark highlight styles (the `theme` prop below).
+// editor matches the rest of the app in both light and dark mode. Syntax colors are the same tok-*
+// classes read-only code uses (classHighlighter + globals.css), so neither theme ever shows green,
+// which is reserved for Sage.
 const editorStyles = {
   "&": {
     backgroundColor: "var(--background)",
@@ -17,6 +20,7 @@ const editorStyles = {
   },
   ".cm-content": {
     fontFamily: "var(--font-mono)",
+    fontVariantLigatures: "none",
     caretColor: "var(--foreground)",
   },
   ".cm-gutters": {
@@ -58,8 +62,8 @@ export function CodeEditor({ value, onChange, readOnly, height = "320px", classN
       <CodeMirror
         value={value}
         onChange={onChange}
-        theme={dark ? "dark" : "light"}
-        extensions={[java(), dark ? darkEditorTheme : lightEditorTheme]}
+        theme={dark ? darkEditorTheme : lightEditorTheme}
+        extensions={[java(), syntaxHighlighting(classHighlighter)]}
         readOnly={readOnly}
         basicSetup={{ tabSize: 4 }}
         height={height}

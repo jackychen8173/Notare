@@ -7,10 +7,10 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useMyCourses } from "@/hooks/useCourses";
 
 const navItems = [
-  { href: "/student/dashboard", label: "Home", icon: IconHome },
-  { href: "/student/courses", label: "Courses", icon: IconBook2 },
-  { href: "/student/workspace", label: "Workspace", icon: IconCode },
-  { href: "/student/calendar", label: "Calendar", icon: IconCalendar },
+  { href: "/student/dashboard", label: "Home", icon: IconHome, shortcut: "h" },
+  { href: "/student/courses", label: "Courses", icon: IconBook2, shortcut: "c" },
+  { href: "/student/workspace", label: "Workspace", icon: IconCode, shortcut: "w" },
+  { href: "/student/calendar", label: "Calendar", icon: IconCalendar, shortcut: "l" },
 ];
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {

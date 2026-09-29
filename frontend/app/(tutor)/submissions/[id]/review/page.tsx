@@ -8,6 +8,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { useAssignment } from "@/hooks/useAssignments";
 import { SubmissionReview } from "@/components/assignment/SubmissionReview";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTutorHome } from "@/hooks/useHome";
 import { useAssignmentSubmissions, useSubmission } from "@/hooks/useSubmissions";
@@ -59,7 +60,13 @@ export default function SubmissionReviewPage({ params }: { params: Promise<{ id:
     return <p className="text-sm text-muted-foreground">Submission not found.</p>;
   }
 
-  const versions = (allSubmissions.data ?? []).filter((s) => s.studentId === submission.data.studentId);
+  // The list may be cached from before this version existed, so always include the one on screen.
+  const versions = [
+    submission.data,
+    ...(allSubmissions.data ?? []).filter(
+      (s) => s.studentId === submission.data.studentId && s.id !== submission.data.id,
+    ),
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -85,6 +92,10 @@ export default function SubmissionReviewPage({ params }: { params: Promise<{ id:
 
         {queue.length > 0 ? (
           <div className="flex items-center gap-2">
+            <span className="hidden items-center gap-1 text-xs text-muted-foreground lg:flex">
+              <Kbd>K</Kbd>
+              <Kbd>J</Kbd>
+            </span>
             <span className="font-mono text-xs text-muted-foreground">
               {position >= 0 ? `${position + 1}/${queue.length} in queue` : `${queue.length} waiting`}
             </span>
@@ -104,7 +115,7 @@ export default function SubmissionReviewPage({ params }: { params: Promise<{ id:
               disabled={!next}
               onClick={() => next && router.push(`/submissions/${next.submissionId}/review`)}
             >
-              Next <kbd className="font-mono text-[0.7rem] text-muted-foreground">J</kbd>
+              Next <Kbd>J</Kbd>
               <IconChevronRight />
             </Button>
           </div>

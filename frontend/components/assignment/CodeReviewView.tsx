@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import { IconCheck, IconPencil, IconPlus, IconSparkles, IconTrash } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import { highlightJavaLines, type HighlightToken } from "@/lib/highlight";
 import { diffLines } from "@/lib/lineDiff";
@@ -56,7 +57,7 @@ export function CodeReviewView({ code, comments, actions, compareTo, className }
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-card border border-border bg-card font-mono text-[0.8rem] leading-6 shadow-card",
+        "overflow-hidden rounded-card border border-border bg-card font-mono text-[0.8rem] leading-6 shadow-card [font-variant-ligatures:none]",
         className,
       )}
     >
@@ -240,9 +241,9 @@ function CommentComposer({
         }}
       />
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs text-muted-foreground">
-          <kbd className="font-mono">Ctrl</kbd>+<kbd className="font-mono">Enter</kbd> to save ·{" "}
-          <kbd className="font-mono">Esc</kbd> to cancel
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Kbd>Ctrl</Kbd>
+          <Kbd>Enter</Kbd> save · <Kbd>Esc</Kbd> cancel
         </span>
         <div className="flex gap-1">
           <Button size="sm" variant="ghost" onClick={onCancel}>

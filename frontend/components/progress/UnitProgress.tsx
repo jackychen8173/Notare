@@ -134,7 +134,9 @@ export function ClassUnitProgress({ courseId }: { courseId: string }) {
               {units.map((unit, i) => (
                 <th key={unit.topicId ?? "none"} className="px-3 py-2.5 text-left font-medium text-foreground">
                   <span className="block max-w-40 truncate">{unit.name}</span>
-                  <span className="font-mono text-[11px] font-normal text-muted-foreground">{totals[i]} items</span>
+                  <span className="font-mono text-[11px] font-normal text-muted-foreground">
+                    {totals[i]} {totals[i] === 1 ? "item" : "items"}
+                  </span>
                 </th>
               ))}
             </tr>

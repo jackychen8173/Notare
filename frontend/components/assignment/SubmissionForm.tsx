@@ -9,6 +9,7 @@ import { IconArrowsMaximize, IconArrowsMinimize, IconPlayerPlay } from "@tabler/
 import { CodeEditor } from "@/components/assignment/CodeEditor";
 import { CodeOutputPanel } from "@/components/assignment/CodeOutputPanel";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { useRunCode } from "@/hooks/useCodeRun";
 import { useSubmitAssignment } from "@/hooks/useSubmissions";
@@ -126,7 +127,10 @@ export function SubmissionForm({
     <Button type="button" variant="outline" disabled={isDemo || runCode.isPending || !content?.trim()} onClick={handleRun}>
       <IconPlayerPlay />
       {runCode.isPending ? "Running..." : "Run"}
-      <kbd className="ml-1 hidden font-mono text-[0.7rem] text-muted-foreground sm:inline">Ctrl+Enter</kbd>
+      <span className="ml-1 hidden gap-0.5 sm:flex">
+        <Kbd>Ctrl</Kbd>
+        <Kbd>Enter</Kbd>
+      </span>
     </Button>
   );
   const submitButton = (
@@ -167,7 +171,7 @@ export function SubmissionForm({
           {runButton}
           {submitButton}
           <Button type="button" variant="ghost" onClick={() => setFullScreen(false)}>
-            <IconArrowsMinimize /> Exit <kbd className="font-mono text-[0.7rem] text-muted-foreground">Esc</kbd>
+            <IconArrowsMinimize /> Exit <Kbd>Esc</Kbd>
           </Button>
         </div>
       ) : null}

@@ -6,6 +6,7 @@ import { AccountMenu } from "@/components/layout/AccountMenu";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { BrandMark } from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 
 interface TopNavProps {
   profileHref: string;
@@ -29,7 +30,10 @@ export function TopNav({ profileHref, onOpenMenu, onOpenSearch }: TopNavProps) {
       >
         <IconSearch className="size-4" stroke={1.75} aria-hidden />
         <span className="flex-1 text-left">Search or jump to...</span>
-        <kbd className="rounded border border-border px-1.5 py-0.5 font-sans text-[10px]">Ctrl K</kbd>
+        <span className="flex gap-0.5">
+          <Kbd>Ctrl</Kbd>
+          <Kbd>K</Kbd>
+        </span>
       </button>
       <div className="ml-auto flex items-center gap-1">
         <Button variant="ghost" size="icon" className="md:hidden" aria-label="Search" onClick={onOpenSearch}>

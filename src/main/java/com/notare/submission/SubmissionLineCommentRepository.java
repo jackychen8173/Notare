@@ -12,5 +12,9 @@ public interface SubmissionLineCommentRepository extends JpaRepository<Submissio
     List<SubmissionLineComment> findBySubmissionIdAndStatusOrderByLineNumberAscCreatedAtAsc(
             UUID submissionId, LineCommentStatus status);
 
+    boolean existsBySubmissionIdAndStatus(UUID submissionId, LineCommentStatus status);
+
+    boolean existsBySubmissionIdAndSourceAndStatus(UUID submissionId, LineCommentSource source, LineCommentStatus status);
+
     void deleteBySubmissionIdAndStatus(UUID submissionId, LineCommentStatus status);
 }

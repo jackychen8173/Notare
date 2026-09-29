@@ -223,9 +223,15 @@ public class SubmissionService {
         Submission submission = requireOwnedSubmission(submissionId, tutorEmail);
 
         boolean hasTutorFeedback = request.tutorFeedback() != null && !request.tutorFeedback().isBlank();
-        if (!hasTutorFeedback && submission.getSageFeedback() == null) {
+        // Line comments the tutor wrote count as their own feedback, so a code review made only of
+        // line comments can be released too.
+        boolean hasTutorLineComments = lineCommentRepository.existsBySubmissionIdAndSourceAndStatus(
+                submission.getId(), LineCommentSource.TUTOR, LineCommentStatus.PUBLISHED);
+        boolean hasAnyLineComments = hasTutorLineComments || lineCommentRepository.existsBySubmissionIdAndStatus(
+                submission.getId(), LineCommentStatus.PUBLISHED);
+        if (!hasTutorFeedback && !hasAnyLineComments && submission.getSageFeedback() == null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Nothing to release: no Sage feedback has been generated and no tutor feedback was provided");
+                    "Nothing to release: add a comment, overall feedback, or Sage feedback first");
         }
 
         if (hasTutorFeedback) {
@@ -233,7 +239,8 @@ public class SubmissionService {
         }
         submission.setGrade(request.grade());
         // REVISED when the tutor added their own commentary on top of (or instead of) Sage's draft, APPROVED otherwise
-        submission.setFeedbackStatus(hasTutorFeedback ? FeedbackStatus.REVISED : FeedbackStatus.APPROVED);
+        submission.setFeedbackStatus(
+                hasTutorFeedback || hasTutorLineComments ? FeedbackStatus.REVISED : FeedbackStatus.APPROVED);
         submission.setReleasedAt(LocalDateTime.now());
 
         submissionRepository.save(submission);
