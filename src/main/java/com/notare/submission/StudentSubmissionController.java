@@ -1,6 +1,7 @@
 package com.notare.submission;
 
 import com.notare.common.ApiResponse;
+import com.notare.submission.dto.LineCommentResponse;
 import com.notare.submission.dto.SubmissionResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -28,5 +30,23 @@ public class StudentSubmissionController {
     ) {
         return ResponseEntity.ok(
                 ApiResponse.success(submissionService.getMySubmission(id, authentication.getName())));
+    }
+
+    @GetMapping("/api/student/assignments/{id}/submissions")
+    public ResponseEntity<ApiResponse<List<SubmissionResponse>>> listMySubmissions(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(submissionService.listMySubmissions(id, authentication.getName())));
+    }
+
+    @GetMapping("/api/student/submissions/{id}/line-comments")
+    public ResponseEntity<ApiResponse<List<LineCommentResponse>>> listMyLineComments(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(submissionService.listMyLineComments(id, authentication.getName())));
     }
 }

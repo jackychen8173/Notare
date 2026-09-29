@@ -52,4 +52,8 @@ public class Assignment {
 
     @Column(name = "due_date", nullable = false)
     private LocalDate dueDate;
+
+    @Column(name = "allow_resubmission", nullable = false)
+    @Builder.Default
+    private boolean allowResubmission = false;
 }

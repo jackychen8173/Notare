@@ -46,8 +46,8 @@ function toQueue(home: TutorHome): QueueItem[] {
     ...home.submissions.map((s) => ({
       key: `s-${s.submissionId}`,
       kind: "submission" as const,
-      title: s.assignmentTitle,
-      who: s.studentName,
+      title: s.attemptNumber > 1 ? `${s.assignmentTitle} · v${s.attemptNumber}` : s.assignmentTitle,
+      who: s.attemptNumber > 1 ? `${s.studentName} resubmitted` : s.studentName,
       course: s.course,
       at: s.submittedAt,
       href: `/submissions/${s.submissionId}/review`,

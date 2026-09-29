@@ -74,6 +74,7 @@ const createAssignmentSchema = z.object({
   dueDate: z.string().min(1, "Due date is required"),
   topicId: z.string().optional(),
   gradeCategoryId: z.string().optional(),
+  allowResubmission: z.boolean().optional(),
 });
 
 type CreateAssignmentValues = z.infer<typeof createAssignmentSchema>;
@@ -187,6 +188,15 @@ function NewAssignmentDialog({ courseId }: { courseId: string }) {
               />
             </div>
           ) : null}
+          <label className="flex items-start gap-2 text-sm text-foreground">
+            <input type="checkbox" className="mt-1 accent-primary" {...register("allowResubmission")} />
+            <span>
+              Allow resubmission
+              <span className="block text-xs text-muted-foreground">
+                After you release feedback, students can fix their code and submit a new version.
+              </span>
+            </span>
+          </label>
           <DialogFooter>
             <Button type="submit" disabled={createAssignment.isPending}>
               {createAssignment.isPending ? "Creating..." : "Create assignment"}

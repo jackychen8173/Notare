@@ -24,9 +24,20 @@ type SubmissionValues = z.infer<typeof submissionSchema>;
 
 interface SubmissionFormProps {
   assignmentId: string;
+  /** Starting code, e.g. the previous version when resubmitting. */
+  initialContent?: string;
+  submitLabel?: string;
+  onSubmitted?: () => void;
+  onCancel?: () => void;
 }
 
-export function SubmissionForm({ assignmentId }: SubmissionFormProps) {
+export function SubmissionForm({
+  assignmentId,
+  initialContent = "",
+  submitLabel = "Submit assignment",
+  onSubmitted,
+  onCancel,
+}: SubmissionFormProps) {
   const submitAssignment = useSubmitAssignment(assignmentId);
   const runCode = useRunCode(assignmentId);
   const isDemo = useIsDemo();
@@ -38,12 +49,12 @@ export function SubmissionForm({ assignmentId }: SubmissionFormProps) {
     formState: { errors },
   } = useForm<SubmissionValues>({
     resolver: zodResolver(submissionSchema),
-    defaultValues: { content: "" },
+    defaultValues: { content: initialContent },
   });
   const content = watch("content");
 
   function onSubmit(values: SubmissionValues) {
-    submitAssignment.mutate(values.content);
+    submitAssignment.mutate(values.content, { onSuccess: () => onSubmitted?.() });
   }
 
   function handleRun() {
@@ -75,8 +86,13 @@ export function SubmissionForm({ assignmentId }: SubmissionFormProps) {
           {runCode.isPending ? "Running..." : "Run"}
         </Button>
         <Button type="submit" disabled={submitAssignment.isPending}>
-          {submitAssignment.isPending ? "Submitting..." : "Submit assignment"}
+          {submitAssignment.isPending ? "Submitting..." : submitLabel}
         </Button>
+        {onCancel ? (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
       </div>
 
       {isDemo ? <DemoDisabledNote feature="Running code" /> : null}
@@ -84,7 +100,7 @@ export function SubmissionForm({ assignmentId }: SubmissionFormProps) {
       {runResult ? <CodeOutputPanel result={runResult} /> : null}
 
       {submitAssignment.isError ? (
-        <p className="text-sm text-destructive">Something went wrong. Try again.</p>
+        <p className="text-sm text-destructive">{errorMessage(submitAssignment.error)}</p>
       ) : null}
     </form>
   );

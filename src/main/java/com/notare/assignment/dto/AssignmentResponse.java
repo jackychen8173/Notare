@@ -15,7 +15,8 @@ public record AssignmentResponse(
         UUID topicId,
         String topicName,
         UUID gradeCategoryId,
-        String gradeCategoryName
+        String gradeCategoryName,
+        boolean allowResubmission
 ) {
     public static AssignmentResponse from(Assignment assignment) {
         return new AssignmentResponse(
@@ -28,7 +29,8 @@ public record AssignmentResponse(
                 assignment.getTopic() != null ? assignment.getTopic().getId() : null,
                 assignment.getTopic() != null ? assignment.getTopic().getName() : null,
                 assignment.getGradeCategory() != null ? assignment.getGradeCategory().getId() : null,
-                assignment.getGradeCategory() != null ? assignment.getGradeCategory().getName() : null
+                assignment.getGradeCategory() != null ? assignment.getGradeCategory().getName() : null,
+                assignment.isAllowResubmission()
         );
     }
 }

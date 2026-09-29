@@ -21,6 +21,7 @@ export interface TutorHome {
     assignmentTitle: string;
     course: HomeCourse;
     studentName: string;
+    attemptNumber: number;
     submittedAt: string;
     sageDraftReady: boolean;
   }[];

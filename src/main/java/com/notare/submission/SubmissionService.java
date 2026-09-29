@@ -7,10 +7,13 @@ import com.notare.rubric.Rubric;
 import com.notare.rubric.RubricCriterion;
 import com.notare.rubric.RubricCriterionRepository;
 import com.notare.rubric.RubricRepository;
+import com.notare.submission.dto.CreateLineCommentRequest;
+import com.notare.submission.dto.LineCommentResponse;
 import com.notare.submission.dto.ReleaseFeedbackRequest;
 import com.notare.submission.dto.RubricScoreItem;
 import com.notare.submission.dto.SubmissionResponse;
 import com.notare.submission.dto.SubmitAssignmentRequest;
+import com.notare.submission.dto.UpdateLineCommentRequest;
 import com.notare.submission.dto.UpdateRubricScoresRequest;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
@@ -36,6 +39,7 @@ public class SubmissionService {
     private final RubricRepository rubricRepository;
     private final RubricCriterionRepository rubricCriterionRepository;
     private final SubmissionCriterionScoreRepository criterionScoreRepository;
+    private final SubmissionLineCommentRepository lineCommentRepository;
 
     public SubmissionService(
             SubmissionRepository submissionRepository,
@@ -44,7 +48,8 @@ public class SubmissionService {
             UserRepository userRepository,
             RubricRepository rubricRepository,
             RubricCriterionRepository rubricCriterionRepository,
-            SubmissionCriterionScoreRepository criterionScoreRepository
+            SubmissionCriterionScoreRepository criterionScoreRepository,
+            SubmissionLineCommentRepository lineCommentRepository
     ) {
         this.submissionRepository = submissionRepository;
         this.assignmentRepository = assignmentRepository;
@@ -53,6 +58,7 @@ public class SubmissionService {
         this.rubricRepository = rubricRepository;
         this.rubricCriterionRepository = rubricCriterionRepository;
         this.criterionScoreRepository = criterionScoreRepository;
+        this.lineCommentRepository = lineCommentRepository;
     }
 
     public SubmissionResponse submitAssignment(UUID assignmentId, SubmitAssignmentRequest request, String studentEmail) {
@@ -67,10 +73,28 @@ public class SubmissionService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not enrolled in this assignment's course");
         }
 
+        // One version at a time: a new one only once the last has feedback, and only if the tutor
+        // turned resubmission on for this assignment.
+        int attemptNumber = submissionRepository
+                .findFirstByStudentIdAndAssignmentIdOrderBySubmittedAtDesc(student.getId(), assignmentId)
+                .map(latest -> {
+                    if (latest.getReleasedAt() == null) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                                "You already submitted this assignment. Wait for feedback before submitting again");
+                    }
+                    if (!assignment.isAllowResubmission()) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT,
+                                "This assignment doesn't accept resubmissions");
+                    }
+                    return latest.getAttemptNumber() + 1;
+                })
+                .orElse(1);
+
         Submission submission = Submission.builder()
                 .assignment(assignment)
                 .student(student)
                 .content(request.content())
+                .attemptNumber(attemptNumber)
                 .feedbackStatus(FeedbackStatus.PENDING)
                 .build();
 
@@ -96,6 +120,89 @@ public class SubmissionService {
                 .findFirstByStudentIdAndAssignmentIdOrderBySubmittedAtDesc(student.getId(), assignmentId)
                 .map(submission -> SubmissionResponse.forStudent(submission, loadRubricScores(submission.getId())))
                 .orElse(null);
+    }
+
+    /** Every version the student has submitted for an assignment, newest first. */
+    @Transactional(readOnly = true)
+    public List<SubmissionResponse> listMySubmissions(UUID assignmentId, String studentEmail) {
+        User student = requireStudent(studentEmail);
+
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
+
+        boolean enrolled = enrollmentRepository.existsByStudentIdAndCourseId(
+                student.getId(), assignment.getCourse().getId());
+        if (!enrolled) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not enrolled in this assignment's course");
+        }
+
+        return submissionRepository
+                .findByStudentIdAndAssignmentIdOrderByAttemptNumberDesc(student.getId(), assignmentId).stream()
+                .map(submission -> SubmissionResponse.forStudent(submission, loadRubricScores(submission.getId())))
+                .toList();
+    }
+
+    /**
+     * The line comments a student may see on their own submission: PUBLISHED ones, and only once
+     * feedback is released - the same gate as SubmissionResponse.forStudent. Sage's unreviewed
+     * SUGGESTED drafts never reach a student.
+     */
+    @Transactional(readOnly = true)
+    public List<LineCommentResponse> listMyLineComments(UUID submissionId, String studentEmail) {
+        User student = requireStudent(studentEmail);
+        Submission submission = submissionRepository.findById(submissionId)
+                .filter(candidate -> candidate.getStudent().getId().equals(student.getId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Submission not found"));
+
+        if (submission.getReleasedAt() == null) {
+            return List.of();
+        }
+        return lineCommentRepository
+                .findBySubmissionIdAndStatusOrderByLineNumberAscCreatedAtAsc(submission.getId(), LineCommentStatus.PUBLISHED)
+                .stream()
+                .map(LineCommentResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<LineCommentResponse> listLineComments(UUID submissionId, String tutorEmail) {
+        Submission submission = requireOwnedSubmission(submissionId, tutorEmail);
+        return lineCommentRepository.findBySubmissionIdOrderByLineNumberAscCreatedAtAsc(submission.getId()).stream()
+                .map(LineCommentResponse::from)
+                .toList();
+    }
+
+    public LineCommentResponse addLineComment(UUID submissionId, CreateLineCommentRequest request, String tutorEmail) {
+        Submission submission = requireOwnedSubmission(submissionId, tutorEmail);
+
+        long lineCount = submission.getContent().lines().count();
+        if (request.lineNumber() > Math.max(lineCount, 1)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Line " + request.lineNumber() + " doesn't exist");
+        }
+
+        SubmissionLineComment comment = SubmissionLineComment.builder()
+                .submission(submission)
+                .lineNumber(request.lineNumber())
+                .body(request.body().trim())
+                .source(LineCommentSource.TUTOR)
+                .status(LineCommentStatus.PUBLISHED)
+                .build();
+        lineCommentRepository.save(comment);
+
+        return LineCommentResponse.from(comment);
+    }
+
+    /** Edits a comment's text. On a Sage suggestion this is how the tutor accepts it: it becomes PUBLISHED. */
+    public LineCommentResponse updateLineComment(UUID commentId, UpdateLineCommentRequest request, String tutorEmail) {
+        SubmissionLineComment comment = requireOwnedLineComment(commentId, tutorEmail);
+        comment.setBody(request.body().trim());
+        comment.setStatus(LineCommentStatus.PUBLISHED);
+        lineCommentRepository.save(comment);
+        return LineCommentResponse.from(comment);
+    }
+
+    public void deleteLineComment(UUID commentId, String tutorEmail) {
+        lineCommentRepository.delete(requireOwnedLineComment(commentId, tutorEmail));
     }
 
     @Transactional(readOnly = true)
@@ -202,6 +309,19 @@ public class SubmissionService {
         }
 
         return submission;
+    }
+
+    private SubmissionLineComment requireOwnedLineComment(UUID commentId, String tutorEmail) {
+        User tutor = requireTutor(tutorEmail);
+        SubmissionLineComment comment = lineCommentRepository.findById(commentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found"));
+
+        if (!comment.getSubmission().getAssignment().getCourse().getTutor().getId().equals(tutor.getId())) {
+            // 404, not 403 - avoid confirming another tutor's comment exists
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found");
+        }
+
+        return comment;
     }
 
     private Assignment requireOwnedAssignment(UUID assignmentId, String tutorEmail) {

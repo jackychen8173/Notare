@@ -479,7 +479,7 @@ public class SageToolExecutor {
         UUID topicId = input.get("topicId") != null ? uuidParam(input, "topicId") : null;
         UUID gradeCategoryId = input.get("gradeCategoryId") != null ? uuidParam(input, "gradeCategoryId") : null;
         return assignmentService.createAssignment(courseId,
-                new CreateAssignmentRequest(title, description, dueDate, topicId, gradeCategoryId), tutor.getEmail());
+                new CreateAssignmentRequest(title, description, dueDate, topicId, gradeCategoryId, null), tutor.getEmail());
     }
 
     private MaterialResponse createMaterial(Map<String, Object> input, User tutor) {

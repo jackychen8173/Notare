@@ -98,6 +98,7 @@ public class HomeService {
                         s.getAssignment().getTitle(),
                         HomeCourse.from(s.getAssignment().getCourse()),
                         s.getStudent().getName(),
+                        s.getAttemptNumber(),
                         s.getSubmittedAt(),
                         s.getSageFeedback() != null))
                 .toList();

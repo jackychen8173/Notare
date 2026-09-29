@@ -7,6 +7,7 @@ import { IconInbox } from "@tabler/icons-react";
 
 import { EmptyState } from "@/components/layout/EmptyState";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { AssignmentSettingsCard } from "@/components/assignment/AssignmentSettingsCard";
 import { RubricPanel } from "@/components/rubric/RubricPanel";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,6 +60,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         ) : null}
       </div>
 
+      <AssignmentSettingsCard assignment={assignment.data} />
+
       <div>
         <h2 className="mb-3 text-lg font-semibold text-foreground">Submissions</h2>
         {submissions.isLoading ? (
@@ -68,25 +71,32 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
             <TableHeader>
               <TableRow>
                 <TableHead>Student</TableHead>
+                <TableHead>Version</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Grade</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {submissions.data.map((submission) => (
+              {[...submissions.data]
+                .sort(
+                  (a, b) =>
+                    a.studentName.localeCompare(b.studentName) || b.attemptNumber - a.attemptNumber,
+                )
+                .map((submission) => (
                 <TableRow key={submission.id}>
                   <TableCell>
                     <Link href={`/submissions/${submission.id}/review`} className="font-medium text-foreground">
                       {submission.studentName}
                     </Link>
                   </TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">v{submission.attemptNumber}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(submission.submittedAt).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Badge variant={statusVariant[submission.feedbackStatus]}>
-                      {submission.feedbackStatus}
+                      {submission.releasedAt ? submission.feedbackStatus : "To review"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{submission.grade ?? "—"}</TableCell>
