@@ -7,6 +7,7 @@ import { IconCheck, IconCopy, IconRefresh, IconUsers } from "@tabler/icons-react
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { ClassUnitProgress } from "@/components/progress/UnitProgress";
 import { AnnouncementsSection } from "@/components/course/AnnouncementsSection";
 import { ClassworkByTopic } from "@/components/course/ClassworkByTopic";
 import { CourseBanner } from "@/components/course/CourseBanner";
@@ -142,17 +143,17 @@ function NewAssignmentDialog({ courseId }: { courseId: string }) {
           </div>
           {topics.data && topics.data.length > 0 ? (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="topicId">Topic (optional)</Label>
+              <Label htmlFor="topicId">Unit (optional)</Label>
               <Controller
                 control={control}
                 name="topicId"
                 render={({ field }) => (
                   <Select value={field.value ?? NO_TOPIC} onValueChange={field.onChange}>
                     <SelectTrigger id="topicId" className="w-full">
-                      <SelectValue placeholder="No topic" />
+                      <SelectValue placeholder="No unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NO_TOPIC}>No topic</SelectItem>
+                      <SelectItem value={NO_TOPIC}>No unit</SelectItem>
                       {topics.data?.map((topic) => (
                         <SelectItem key={topic.id} value={topic.id}>
                           {topic.name}
@@ -287,17 +288,17 @@ function NewQuizDialog({ courseId }: { courseId: string }) {
           </div>
           {topics.data && topics.data.length > 0 ? (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="quiz-topicId">Topic (optional)</Label>
+              <Label htmlFor="quiz-topicId">Unit (optional)</Label>
               <Controller
                 control={control}
                 name="topicId"
                 render={({ field }) => (
                   <Select value={field.value ?? NO_TOPIC} onValueChange={field.onChange}>
                     <SelectTrigger id="quiz-topicId" className="w-full">
-                      <SelectValue placeholder="No topic" />
+                      <SelectValue placeholder="No unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NO_TOPIC}>No topic</SelectItem>
+                      <SelectItem value={NO_TOPIC}>No unit</SelectItem>
                       {topics.data?.map((topic) => (
                         <SelectItem key={topic.id} value={topic.id}>
                           {topic.name}
@@ -518,7 +519,7 @@ function DuplicateCourseDialog({ course }: { course: Course }) {
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
             Creates a separate course with its own join code, for another section or a new school year.
-            Topics, materials, grade categories, assignments, rubrics, and quizzes are copied. Students,
+            Units, materials, grade categories, assignments, rubrics, and quizzes are copied. Students,
             submissions, announcements, and discussions are not. Due dates are kept as-is, so update them
             if needed.
           </p>
@@ -633,6 +634,7 @@ function PeopleTab({ courseId }: { courseId: string }) {
 const TABS: CourseTab[] = [
   { id: "stream", label: "Stream" },
   { id: "classwork", label: "Classwork" },
+  { id: "progress", label: "Progress" },
   { id: "people", label: "People" },
   { id: "discussions", label: "Discussions" },
   { id: "settings", label: "Settings" },
@@ -714,7 +716,7 @@ function CourseDetail({ id }: { id: string }) {
                 assignments={assignmentList}
                 quizzes={quizzes.data ?? []}
                 topicOrder={topics.data?.map((topic) => topic.name)}
-                emptyDescription="Create an assignment or quiz. Group them by unit with topics below."
+                emptyDescription="Create an assignment or quiz. Group them into units below."
               />
             )}
           </div>
@@ -722,6 +724,8 @@ function CourseDetail({ id }: { id: string }) {
           <TopicsManager courseId={id} editable={!archived} />
         </div>
       ) : null}
+
+      {tab === "progress" ? <ClassUnitProgress courseId={id} /> : null}
 
       {tab === "people" ? <PeopleTab courseId={id} /> : null}
 

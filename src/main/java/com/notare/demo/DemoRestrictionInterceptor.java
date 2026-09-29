@@ -23,7 +23,7 @@ import java.util.List;
 @Component
 public class DemoRestrictionInterceptor implements HandlerInterceptor {
 
-    static final List<String> PAID_ENDPOINTS = List.of("/api/sage/**", "/api/assignments/*/run");
+    static final List<String> PAID_ENDPOINTS = List.of("/api/sage/**", "/api/assignments/*/run", "/api/student/workspace/run");
 
     private static final List<String> PAID_GET_ENDPOINTS = List.of("/api/sage/student-progress/*");
 

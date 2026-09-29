@@ -17,6 +17,8 @@ public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, UUID> 
 
     List<QuizAttempt> findByStudentId(UUID studentId);
 
+    List<QuizAttempt> findByQuiz_Course_Id(UUID courseId);
+
     /**
      * The tutor's review queue: finished attempts not yet released, in active courses. An attempt
      * still IN_PROGRESS past its deadline counts as finished (it's only finalized lazily, the next

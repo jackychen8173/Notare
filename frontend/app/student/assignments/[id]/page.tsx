@@ -79,7 +79,10 @@ export default function StudentAssignmentDetailPage({
       {submissions.isLoading ? (
         <Skeleton className="h-32 w-full" />
       ) : !latest ? (
-        <SubmissionForm assignmentId={id} />
+        <SubmissionForm
+          assignmentId={id}
+          instructions={{ title: assignment.data.title, description: assignment.data.description }}
+        />
       ) : resubmitting ? (
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium text-foreground">
@@ -88,6 +91,7 @@ export default function StudentAssignmentDetailPage({
           </p>
           <SubmissionForm
             assignmentId={id}
+            instructions={{ title: assignment.data.title, description: assignment.data.description }}
             initialContent={latest.content}
             submitLabel={`Submit version ${latest.attemptNumber + 1}`}
             onSubmitted={() => {

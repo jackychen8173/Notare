@@ -1,6 +1,6 @@
 "use client";
 
-import { IconBook2, IconCalendar, IconHome } from "@tabler/icons-react";
+import { IconBook2, IconCalendar, IconCode, IconHome } from "@tabler/icons-react";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -9,6 +9,7 @@ import { useMyCourses } from "@/hooks/useCourses";
 const navItems = [
   { href: "/student/dashboard", label: "Home", icon: IconHome },
   { href: "/student/courses", label: "Courses", icon: IconBook2 },
+  { href: "/student/workspace", label: "Workspace", icon: IconCode },
   { href: "/student/calendar", label: "Calendar", icon: IconCalendar },
 ];
 

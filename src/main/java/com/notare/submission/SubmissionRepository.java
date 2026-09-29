@@ -14,6 +14,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, UUID> {
 
     List<Submission> findByAssignmentId(UUID assignmentId);
 
+    List<Submission> findByAssignment_Course_Id(UUID courseId);
+
     long countByFeedbackStatusAndAssignment_Course_Tutor_Id(FeedbackStatus feedbackStatus, UUID tutorId);
 
     Optional<Submission> findFirstByStudentIdAndAssignmentIdOrderBySubmittedAtDesc(

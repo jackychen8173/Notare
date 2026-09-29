@@ -41,12 +41,14 @@ interface CommandItem {
 const COURSE_TABS: Record<SearchRole, { id: string; label: string }[]> = {
   tutor: [
     { id: "classwork", label: "Classwork" },
+    { id: "progress", label: "Progress" },
     { id: "people", label: "People" },
     { id: "discussions", label: "Discussions" },
     { id: "settings", label: "Settings" },
   ],
   student: [
     { id: "classwork", label: "Classwork" },
+    { id: "progress", label: "Progress" },
     { id: "discussions", label: "Discussions" },
   ],
   admin: [],
