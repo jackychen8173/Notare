@@ -17,6 +17,7 @@ public record TutorHomeResponse(
             String assignmentTitle,
             HomeCourse course,
             String studentName,
+            int attemptNumber,
             LocalDateTime submittedAt,
             boolean sageDraftReady
     ) {

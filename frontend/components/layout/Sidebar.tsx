@@ -11,6 +11,8 @@ export interface SidebarNavItem {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string; stroke?: number }>;
+  /** Second key of the "G then letter" jump, shown on hover. */
+  shortcut?: string;
 }
 
 export interface SidebarCourseLink {
@@ -68,7 +70,7 @@ export function SidebarContent({ items, courses, onNavigate }: SidebarProps) {
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "group flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
                 active
                   ? "bg-primary-soft text-primary"
                   : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground",
@@ -76,6 +78,11 @@ export function SidebarContent({ items, courses, onNavigate }: SidebarProps) {
             >
               <Icon className="size-[18px]" stroke={1.75} />
               {item.label}
+              {item.shortcut ? (
+                <span className="ml-auto hidden font-mono text-[10px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 md:inline">
+                  g {item.shortcut}
+                </span>
+              ) : null}
             </Link>
           );
         })}
@@ -83,7 +90,7 @@ export function SidebarContent({ items, courses, onNavigate }: SidebarProps) {
 
       {courses && courseItems.length > 0 ? (
         <div className="flex flex-col gap-0.5">
-          <p className="px-3 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          <p className="px-3 pb-1 font-mono text-[11px] tracking-wider text-muted-foreground uppercase">
             Your courses
           </p>
           {courseItems.map((course) => {

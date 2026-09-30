@@ -7,11 +7,11 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useCourses } from "@/hooks/useCourses";
 
 const navItems = [
-  { href: "/dashboard", label: "Home", icon: IconHome },
-  { href: "/students", label: "Students", icon: IconUsers },
-  { href: "/courses", label: "Courses", icon: IconBook2 },
-  { href: "/calendar", label: "Calendar", icon: IconCalendar },
-  { href: "/sage", label: "Ask Sage", icon: IconMessageChatbot },
+  { href: "/dashboard", label: "Home", icon: IconHome, shortcut: "h" },
+  { href: "/students", label: "Students", icon: IconUsers, shortcut: "s" },
+  { href: "/courses", label: "Courses", icon: IconBook2, shortcut: "c" },
+  { href: "/calendar", label: "Calendar", icon: IconCalendar, shortcut: "l" },
+  { href: "/sage", label: "Ask Sage", icon: IconMessageChatbot, shortcut: "a" },
 ];
 
 export default function TutorLayout({ children }: { children: React.ReactNode }) {

@@ -115,17 +115,17 @@ function EditQuizDialog({ quiz }: { quiz: Quiz }) {
           </div>
           {topics.data && topics.data.length > 0 ? (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="edit-quiz-topicId">Topic (optional)</Label>
+              <Label htmlFor="edit-quiz-topicId">Unit (optional)</Label>
               <Controller
                 control={control}
                 name="topicId"
                 render={({ field }) => (
                   <Select value={field.value ?? NO_TOPIC} onValueChange={field.onChange}>
                     <SelectTrigger id="edit-quiz-topicId" className="w-full">
-                      <SelectValue placeholder="No topic" />
+                      <SelectValue placeholder="No unit" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NO_TOPIC}>No topic</SelectItem>
+                      <SelectItem value={NO_TOPIC}>No unit</SelectItem>
                       {topics.data?.map((topic) => (
                         <SelectItem key={topic.id} value={topic.id}>
                           {topic.name}

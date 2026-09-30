@@ -2,6 +2,7 @@ package com.notare.assignment;
 
 import com.notare.assignment.dto.AssignmentResponse;
 import com.notare.assignment.dto.CreateAssignmentRequest;
+import com.notare.assignment.dto.UpdateAssignmentSettingsRequest;
 import com.notare.course.Course;
 import com.notare.course.CourseRepository;
 import com.notare.course.EnrollmentRepository;
@@ -75,8 +76,26 @@ public class AssignmentService {
                 .title(request.title())
                 .description(request.description())
                 .dueDate(request.dueDate())
+                .allowResubmission(Boolean.TRUE.equals(request.allowResubmission()))
                 .build();
 
+        assignmentRepository.save(assignment);
+
+        return AssignmentResponse.from(assignment);
+    }
+
+    public AssignmentResponse updateSettings(UUID assignmentId, UpdateAssignmentSettingsRequest request, String tutorEmail) {
+        Assignment assignment = requireOwnedAssignment(assignmentId, tutorEmail);
+
+        Topic topic = null;
+        if (request.topicId() != null) {
+            topic = topicRepository.findById(request.topicId())
+                    .filter(candidate -> candidate.getCourse().getId().equals(assignment.getCourse().getId()))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found"));
+        }
+
+        assignment.setTopic(topic);
+        assignment.setAllowResubmission(request.allowResubmission());
         assignmentRepository.save(assignment);
 
         return AssignmentResponse.from(assignment);

@@ -89,6 +89,7 @@ export interface CreateAssignmentInput {
   dueDate: string;
   topicId?: string;
   gradeCategoryId?: string;
+  allowResubmission?: boolean;
 }
 
 export function useCreateAssignment(courseId: string) {
@@ -103,6 +104,26 @@ export function useCreateAssignment(courseId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: assignmentKeys.forCourse(courseId) });
+    },
+  });
+}
+
+export interface AssignmentSettingsInput {
+  allowResubmission: boolean;
+  /** null ungroups the assignment. */
+  topicId: string | null;
+}
+
+export function useUpdateAssignmentSettings(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: AssignmentSettingsInput) => {
+      const res = await api.put<ApiEnvelope<Assignment>>(`/api/assignments/${id}/settings`, input);
+      return res.data.data;
+    },
+    onSuccess: (assignment) => {
+      queryClient.setQueryData(assignmentKeys.detail(id), assignment);
+      queryClient.invalidateQueries({ queryKey: assignmentKeys.forCourse(assignment.courseId) });
     },
   });
 }

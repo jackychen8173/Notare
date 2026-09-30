@@ -21,7 +21,11 @@ import com.notare.session.SessionNote;
 import com.notare.session.SessionNoteRepository;
 import com.notare.session.SessionRepository;
 import com.notare.session.dto.SessionNoteResponse;
+import com.notare.submission.LineCommentSource;
+import com.notare.submission.LineCommentStatus;
 import com.notare.submission.Submission;
+import com.notare.submission.SubmissionLineComment;
+import com.notare.submission.SubmissionLineCommentRepository;
 import com.notare.submission.SubmissionCriterionScoreRepository;
 import com.notare.submission.SubmissionRepository;
 import com.notare.submission.dto.RubricScoreItem;
@@ -50,7 +54,9 @@ public class SageService {
             (Java) students. Review the student's Java code submission and provide feedback covering \
             correctness, code style against AP CSA conventions, concrete suggestions for improvement, and a \
             brief encouraging note. Reference specific parts of the submitted code rather than speaking in \
-            generalities.""";
+            generalities. The code is shown with line numbers: also leave a few short comments pinned to the \
+            specific lines they're about (at most 8, only where a line-level note genuinely helps), using those \
+            line numbers. Don't include the line-number prefixes in any code you quote.""";
 
     private static final String NOTES_SYSTEM_PROMPT = """
             You are Sage, an AI assistant that turns a tutor's raw, shorthand tutoring session notes into a \
@@ -82,6 +88,7 @@ public class SageService {
     private final QuizAttemptRepository quizAttemptRepository;
     private final QuizAnswerRepository quizAnswerRepository;
     private final QuizAttemptService quizAttemptService;
+    private final SubmissionLineCommentRepository lineCommentRepository;
 
     public SageService(
             AnthropicClient anthropicClient,
@@ -93,7 +100,8 @@ public class SageService {
             UserRepository userRepository,
             QuizAttemptRepository quizAttemptRepository,
             QuizAnswerRepository quizAnswerRepository,
-            QuizAttemptService quizAttemptService
+            QuizAttemptService quizAttemptService,
+            SubmissionLineCommentRepository lineCommentRepository
     ) {
         this.anthropicClient = anthropicClient;
         this.objectMapper = objectMapper;
@@ -105,6 +113,7 @@ public class SageService {
         this.quizAttemptRepository = quizAttemptRepository;
         this.quizAnswerRepository = quizAnswerRepository;
         this.quizAttemptService = quizAttemptService;
+        this.lineCommentRepository = lineCommentRepository;
     }
 
     public SessionNoteResponse draftSessionNotes(UUID sessionId, String tutorEmail) {
@@ -123,9 +132,28 @@ public class SageService {
     public SubmissionResponse reviewSubmission(UUID submissionId, String tutorEmail) {
         Submission submission = requireOwnedSubmission(submissionId, tutorEmail);
 
-        SageFeedback feedback = completeStructured(FEEDBACK_SYSTEM_PROMPT, submission.getContent(), SageFeedback.class);
-        submission.setSageFeedback(toJson(feedback));
+        SageCodeReview review = completeStructured(
+                FEEDBACK_SYSTEM_PROMPT, numberLines(submission.getContent()), SageCodeReview.class);
+        submission.setSageFeedback(toJson(review.overall()));
         submissionRepository.save(submission);
+
+        // Re-reviewing replaces Sage's earlier unreviewed suggestions; ones the tutor already
+        // accepted (PUBLISHED) stay. Line numbers outside the code are dropped rather than trusted.
+        lineCommentRepository.deleteBySubmissionIdAndStatus(submission.getId(), LineCommentStatus.SUGGESTED);
+        lineCommentRepository.flush();
+        long lineCount = submission.getContent().lines().count();
+        if (review.lineComments() != null) {
+            review.lineComments().stream()
+                    .filter(note -> note.line() >= 1 && note.line() <= lineCount)
+                    .filter(note -> note.comment() != null && !note.comment().isBlank())
+                    .forEach(note -> lineCommentRepository.save(SubmissionLineComment.builder()
+                            .submission(submission)
+                            .lineNumber(note.line())
+                            .body(note.comment().trim())
+                            .source(LineCommentSource.SAGE)
+                            .status(LineCommentStatus.SUGGESTED)
+                            .build()));
+        }
 
         List<RubricScoreItem> rubricScores = criterionScoreRepository.findBySubmissionId(submission.getId()).stream()
                 .map(score -> new RubricScoreItem(
@@ -165,6 +193,15 @@ public class SageService {
         quizAnswerRepository.save(answer);
 
         return quizAttemptService.getAttempt(attemptId, tutorEmail);
+    }
+
+    private static String numberLines(String code) {
+        List<String> lines = code.lines().toList();
+        StringBuilder numbered = new StringBuilder();
+        for (int i = 0; i < lines.size(); i++) {
+            numbered.append(i + 1).append(": ").append(lines.get(i)).append("\n");
+        }
+        return numbered.toString();
     }
 
     private String buildQuizAnswerPrompt(QuizAnswer answer) {

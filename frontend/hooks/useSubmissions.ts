@@ -4,7 +4,7 @@ import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/rea
 
 import { api, type ApiEnvelope } from "@/lib/api";
 import type { PendingReviews } from "@/types/sage";
-import type { Submission } from "@/types/submission";
+import type { LineComment, Submission } from "@/types/submission";
 
 export const submissionKeys = {
   forAssignment: (assignmentId: string) => ["assignments", assignmentId, "submissions"] as const,
@@ -12,6 +12,11 @@ export const submissionKeys = {
   pendingReviews: ["sage", "pending-reviews"] as const,
   mineForAssignment: (assignmentId: string) =>
     ["student", "assignments", assignmentId, "submission"] as const,
+  mineAllForAssignment: (assignmentId: string) =>
+    ["student", "assignments", assignmentId, "submissions"] as const,
+  lineComments: (submissionId: string) => ["submissions", submissionId, "line-comments"] as const,
+  myLineComments: (submissionId: string) =>
+    ["student", "submissions", submissionId, "line-comments"] as const,
 };
 
 async function fetchAssignmentSubmissions(assignmentId: string): Promise<Submission[]> {
@@ -95,6 +100,7 @@ export function useSubmitAssignment(assignmentId: string) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: submissionKeys.mineForAssignment(assignmentId) });
+      queryClient.invalidateQueries({ queryKey: submissionKeys.mineAllForAssignment(assignmentId) });
     },
   });
 }
@@ -110,6 +116,8 @@ export function useReviewSubmission(id: string) {
     },
     onSuccess: (submission) => {
       queryClient.setQueryData(submissionKeys.detail(id), submission);
+      // Sage's review also drafts line comments.
+      queryClient.invalidateQueries({ queryKey: submissionKeys.lineComments(id) });
     },
   });
 }
@@ -149,4 +157,69 @@ export function useUpdateRubricScores(id: string) {
       queryClient.setQueryData(submissionKeys.detail(id), submission);
     },
   });
+}
+
+/** Every version the student submitted for an assignment, newest first. */
+export function useMySubmissions(assignmentId: string) {
+  return useQuery({
+    queryKey: submissionKeys.mineAllForAssignment(assignmentId),
+    queryFn: async () => {
+      const res = await api.get<ApiEnvelope<Submission[]>>(
+        `/api/student/assignments/${assignmentId}/submissions`,
+      );
+      return res.data.data;
+    },
+    enabled: !!assignmentId,
+  });
+}
+
+export function useMyLineComments(submissionId: string, enabled = true) {
+  return useQuery({
+    queryKey: submissionKeys.myLineComments(submissionId),
+    queryFn: async () => {
+      const res = await api.get<ApiEnvelope<LineComment[]>>(
+        `/api/student/submissions/${submissionId}/line-comments`,
+      );
+      return res.data.data;
+    },
+    enabled: !!submissionId && enabled,
+  });
+}
+
+export function useLineComments(submissionId: string) {
+  return useQuery({
+    queryKey: submissionKeys.lineComments(submissionId),
+    queryFn: async () => {
+      const res = await api.get<ApiEnvelope<LineComment[]>>(`/api/submissions/${submissionId}/line-comments`);
+      return res.data.data;
+    },
+    enabled: !!submissionId,
+  });
+}
+
+/** Add, edit (which also accepts a Sage suggestion) and delete line comments on one submission. */
+export function useLineCommentMutations(submissionId: string) {
+  const queryClient = useQueryClient();
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: submissionKeys.lineComments(submissionId) });
+
+  const add = useMutation({
+    mutationFn: async (input: { lineNumber: number; body: string }) =>
+      (await api.post<ApiEnvelope<LineComment>>(`/api/submissions/${submissionId}/line-comments`, input)).data
+        .data,
+    onSuccess: invalidate,
+  });
+  const update = useMutation({
+    mutationFn: async ({ id, body }: { id: string; body: string }) =>
+      (await api.patch<ApiEnvelope<LineComment>>(`/api/line-comments/${id}`, { body })).data.data,
+    onSuccess: invalidate,
+  });
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/api/line-comments/${id}`);
+    },
+    onSuccess: invalidate,
+  });
+
+  return { add, update, remove };
 }

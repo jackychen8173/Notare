@@ -9,4 +9,5 @@ export interface Assignment {
   topicName: string | null;
   gradeCategoryId: string | null;
   gradeCategoryName: string | null;
+  allowResubmission: boolean;
 }

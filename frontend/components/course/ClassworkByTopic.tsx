@@ -7,7 +7,7 @@ import { parseDateOnly } from "@/lib/dates";
 import type { Assignment } from "@/types/assignment";
 import type { Quiz } from "@/types/quiz";
 
-const UNGROUPED = "Ungrouped";
+const UNGROUPED = "No unit";
 
 interface ClassworkByTopicProps {
   assignments: Assignment[];

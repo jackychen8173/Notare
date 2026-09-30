@@ -24,7 +24,7 @@ export function CourseTabs({ tabs, active }: { tabs: CourseTab[]; active: string
 
   return (
     <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <nav className="flex min-w-max gap-1 border-b border-border" aria-label="Course sections">
+      <nav className="flex min-w-max border-b border-border" aria-label="Course sections">
         {tabs.map((tab, index) => {
           const selected = tab.id === active;
           return (
@@ -34,10 +34,11 @@ export function CourseTabs({ tabs, active }: { tabs: CourseTab[]; active: string
               scroll={false}
               aria-current={selected ? "page" : undefined}
               className={cn(
-                "relative -mb-px flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition-colors",
+                "relative -mb-px flex items-center gap-2 rounded-t-lg border border-b-0 px-3.5 py-2 text-sm font-medium transition-colors",
+                "before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:rounded-t-lg",
                 selected
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground",
+                  ? "border-border bg-card text-foreground before:bg-primary"
+                  : "border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground",
               )}
             >
               {tab.label}

@@ -36,6 +36,10 @@ import com.notare.session.SessionRepository;
 import com.notare.session.SessionStatus;
 import com.notare.submission.FeedbackStatus;
 import com.notare.submission.Submission;
+import com.notare.submission.LineCommentSource;
+import com.notare.submission.LineCommentStatus;
+import com.notare.submission.SubmissionLineComment;
+import com.notare.submission.SubmissionLineCommentRepository;
 import com.notare.submission.SubmissionRepository;
 import com.notare.topic.Topic;
 import com.notare.topic.TopicRepository;
@@ -77,6 +81,7 @@ class DemoSeeder {
     private final MaterialRepository materialRepository;
     private final AssignmentRepository assignmentRepository;
     private final SubmissionRepository submissionRepository;
+    private final SubmissionLineCommentRepository lineCommentRepository;
     private final QuizRepository quizRepository;
     private final QuizQuestionRepository quizQuestionRepository;
     private final QuizQuestionOptionRepository quizQuestionOptionRepository;
@@ -97,6 +102,7 @@ class DemoSeeder {
             MaterialRepository materialRepository,
             AssignmentRepository assignmentRepository,
             SubmissionRepository submissionRepository,
+            SubmissionLineCommentRepository lineCommentRepository,
             QuizRepository quizRepository,
             QuizQuestionRepository quizQuestionRepository,
             QuizQuestionOptionRepository quizQuestionOptionRepository,
@@ -116,6 +122,7 @@ class DemoSeeder {
         this.materialRepository = materialRepository;
         this.assignmentRepository = assignmentRepository;
         this.submissionRepository = submissionRepository;
+        this.lineCommentRepository = lineCommentRepository;
         this.quizRepository = quizRepository;
         this.quizQuestionRepository = quizQuestionRepository;
         this.quizQuestionOptionRepository = quizQuestionOptionRepository;
@@ -168,6 +175,9 @@ class DemoSeeder {
                 "Write a class `TemperatureConverter` whose `main` method converts 98.6°F to Celsius and prints the result "
                         + "rounded to one decimal place. Use the formula C = (F - 32) * 5 / 9 and watch out for integer division.",
                 today.minusDays(7));
+        // Resubmission is on here, so the demo student can revise after reading the line comments.
+        converter.setAllowResubmission(true);
+        assignmentRepository.save(converter);
         Assignment strings = assignment(period3, unit2, "String Methods Practice",
                 "Given a full name like \"Ada Lovelace\", print the initials, the name in all caps, and the number of "
                         + "characters (not counting the space) using `substring`, `indexOf`, `toUpperCase` and `length`.",
@@ -185,7 +195,7 @@ class DemoSeeder {
                 today.minusDays(5));
 
         // Released: what the demo student sees once the teacher approves Sage's feedback.
-        submissionRepository.save(Submission.builder()
+        Submission released = submissionRepository.save(Submission.builder()
                 .assignment(converter).student(student)
                 .content(CONVERTER_GOOD)
                 .sageFeedback(json(new SageFeedback(
@@ -199,8 +209,12 @@ class DemoSeeder {
                 .submittedAt(now.minusDays(8))
                 .releasedAt(now.minusDays(6))
                 .build());
+        lineComment(released, 4, LineCommentSource.TUTOR, LineCommentStatus.PUBLISHED,
+                "Good call writing 5.0 here. With 5 / 9 this line would quietly compute 0.");
+        lineComment(released, 5, LineCommentSource.SAGE, LineCommentStatus.PUBLISHED,
+                "printf rounds only what's printed. The celsius variable still holds 37.0000...");
         // Waiting on the teacher: a Sage draft is ready to review, edit and release.
-        submissionRepository.save(Submission.builder()
+        Submission samDraft = submissionRepository.save(Submission.builder()
                 .assignment(converter).student(sam)
                 .content(CONVERTER_INT_DIVISION)
                 .sageFeedback(json(new SageFeedback(
@@ -211,6 +225,11 @@ class DemoSeeder {
                 .feedbackStatus(FeedbackStatus.PENDING)
                 .submittedAt(now.minusDays(7).minusHours(3))
                 .build());
+        // Sage's line suggestions: only the teacher sees these until they accept one.
+        lineComment(samDraft, 3, LineCommentSource.SAGE, LineCommentStatus.SUGGESTED,
+                "An int can't hold 98.6, so the input is already off before any math happens. Try double.");
+        lineComment(samDraft, 4, LineCommentSource.SAGE, LineCommentStatus.SUGGESTED,
+                "5 / 9 with ints is integer division. Use 5.0 / 9 so Java keeps the decimal part.");
         submissionRepository.save(Submission.builder()
                 .assignment(converter).student(maya)
                 .content(CONVERTER_GOOD.replace("celsius", "c"))
@@ -383,6 +402,13 @@ class DemoSeeder {
                 .id(new EnrollmentId(student.getId(), course.getId()))
                 .student(student)
                 .course(course)
+                .build());
+    }
+
+    private void lineComment(Submission submission, int line, LineCommentSource source, LineCommentStatus status,
+                             String body) {
+        lineCommentRepository.save(SubmissionLineComment.builder()
+                .submission(submission).lineNumber(line).source(source).status(status).body(body)
                 .build());
     }
 

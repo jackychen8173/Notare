@@ -56,6 +56,16 @@ public class CodeRunService {
                     "You are not enrolled in this assignment's course");
         }
 
+        return execute(request);
+    }
+
+    /** Workspace practice code: any student may run it, since it isn't tied to a course. */
+    public CodeRunResponse runPractice(RunCodeRequest request, String studentEmail) {
+        requireStudent(studentEmail);
+        return execute(request);
+    }
+
+    private CodeRunResponse execute(RunCodeRequest request) {
         try {
             CodeRunResponse response = codeRunRestClient.post()
                     .uri("/api/code-run")

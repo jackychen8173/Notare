@@ -111,6 +111,7 @@ public class CourseContentCopier {
                     .title(assignment.getTitle())
                     .description(assignment.getDescription())
                     .dueDate(assignment.getDueDate())
+                    .allowResubmission(assignment.isAllowResubmission())
                     .build());
             rubricRepository.findByAssignmentId(assignment.getId())
                     .ifPresent(rubric -> copyRubric(rubric, copy));

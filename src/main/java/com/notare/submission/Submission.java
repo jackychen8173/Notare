@@ -47,6 +47,11 @@ public class Submission {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
+    /** 1 for the first submission; each resubmission after released feedback is the next number. */
+    @Column(name = "attempt_number", nullable = false)
+    @Builder.Default
+    private int attemptNumber = 1;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "sage_feedback", columnDefinition = "jsonb")
     private String sageFeedback;

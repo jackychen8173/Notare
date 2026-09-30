@@ -11,6 +11,7 @@ public record CreateAssignmentRequest(
         String description,
         @NotNull LocalDate dueDate,
         UUID topicId,
-        UUID gradeCategoryId
+        UUID gradeCategoryId,
+        Boolean allowResubmission
 ) {
 }

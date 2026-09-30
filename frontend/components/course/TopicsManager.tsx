@@ -48,10 +48,10 @@ function NewTopicDialog({ courseId }: { courseId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) reset(); }}>
-      <DialogTrigger render={<Button variant="outline" size="sm">New topic</Button>} />
+      <DialogTrigger render={<Button variant="outline" size="sm">New unit</Button>} />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>New topic</DialogTitle>
+          <DialogTitle>New unit</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -61,7 +61,7 @@ function NewTopicDialog({ courseId }: { courseId: string }) {
           </div>
           <DialogFooter>
             <Button type="submit" disabled={createTopic.isPending}>
-              {createTopic.isPending ? "Creating..." : "Create topic"}
+              {createTopic.isPending ? "Creating..." : "Create unit"}
             </Button>
           </DialogFooter>
         </form>
@@ -89,7 +89,7 @@ function RenameTopicDialog({ courseId, topic }: { courseId: string; topic: Topic
       <DialogTrigger render={<Button variant="outline" size="sm">Rename</Button>} />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Rename topic</DialogTitle>
+          <DialogTitle>Rename unit</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -115,7 +115,7 @@ export function TopicsManager({ courseId, editable }: { courseId: string; editab
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Topics</h2>
+        <h2 className="text-lg font-semibold text-foreground">Units</h2>
         {editable ? <NewTopicDialog courseId={courseId} /> : null}
       </div>
       {topics.isLoading ? (
@@ -144,7 +144,7 @@ export function TopicsManager({ courseId, editable }: { courseId: string; editab
           ))}
         </div>
       ) : (
-        <EmptyState icon={IconFolders} title="No topics yet" description="Topics group classwork by unit, like &quot;Unit 1: Primitive Types&quot;." />
+        <EmptyState icon={IconFolders} title="No units yet" description="Units group classwork and track progress, like &quot;Unit 1: Primitive Types&quot;." />
       )}
     </div>
   );
