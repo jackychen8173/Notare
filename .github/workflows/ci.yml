@@ -16,10 +16,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - name: Build
+      # Integration tests start a throwaway Postgres via Testcontainers (Docker is on ubuntu-latest).
+      - name: Build and test
         run: |
           chmod +x mvnw
-          ./mvnw -B -DskipTests clean compile
+          ./mvnw -B clean verify
 
   frontend:
     name: Frontend (Next.js)

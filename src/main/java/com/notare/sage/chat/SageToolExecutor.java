@@ -63,6 +63,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -159,6 +160,11 @@ public class SageToolExecutor {
         this.quizAttemptService = quizAttemptService;
     }
 
+    /**
+     * Each call is its own transaction (SageChatService has none around the loop), so a tool that
+     * fails rolls back only its own work and the chat turn carries on with an is_error result.
+     */
+    @Transactional
     public String execute(String toolName, Map<String, Object> input, User tutor) {
         Object result = switch (toolName) {
             case "list_students" -> listStudents(input, tutor);
@@ -201,6 +207,7 @@ public class SageToolExecutor {
         return toJson(result);
     }
 
+    @Transactional(readOnly = true)
     public String describeAction(String toolName, Map<String, Object> input, User tutor) {
         return switch (toolName) {
             case "release_feedback" -> {

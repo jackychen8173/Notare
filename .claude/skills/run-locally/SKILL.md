@@ -9,7 +9,7 @@ Three pieces: local Postgres (Docker), the Spring Boot backend, the Next.js fron
 
 ## 1. Local Postgres (Docker Desktop must be running)
 
-A disposable container `notare-local-pg` already exists from prior sessions, mapped to host port **55432** (not the default 5432):
+A disposable container `notare-local-pg` already exists from prior sessions, mapped to host port **45432** (not the default 5432; moved from 55432 on 2026-11-10 after Windows reserved 55365-55464):
 
 ```bash
 docker start notare-local-pg
@@ -20,7 +20,7 @@ If it doesn't exist yet (fresh machine), create it:
 ```bash
 docker run -d --name notare-local-pg \
   -e POSTGRES_USER=notare -e POSTGRES_PASSWORD=changeme -e POSTGRES_DB=notare \
-  -p 55432:5432 postgres:16
+  -p 45432:5432 postgres:16
 ```
 
 Credentials: user `notare` / password `changeme` / db `notare`.
@@ -33,7 +33,7 @@ The system default JDK is 19 — must override `JAVA_HOME` to the JDK 21 install
 
 ```bash
 export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-21.0.7.6-hotspot"
-export DATABASE_URL="jdbc:postgresql://localhost:55432/notare"
+export DATABASE_URL="jdbc:postgresql://localhost:45432/notare"
 export DATABASE_USERNAME="notare"
 export DATABASE_PASSWORD="changeme"
 export JWT_SECRET="local-dev-secret-key-not-for-production-use-only-abcdefghijklmnop"

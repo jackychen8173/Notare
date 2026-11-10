@@ -6,7 +6,7 @@ set -e
 docker start notare-local-pg
 
 export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-21.0.7.6-hotspot"
-export DATABASE_URL="jdbc:postgresql://localhost:55432/notare"
+export DATABASE_URL="jdbc:postgresql://localhost:45432/notare"
 export DATABASE_USERNAME="notare"
 export DATABASE_PASSWORD="changeme"
 export JWT_SECRET="local-dev-secret-key-not-for-production-use-only-abcdefghijklmnop"
