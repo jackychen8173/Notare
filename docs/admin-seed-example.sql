@@ -1,20 +1,23 @@
 -- docs/admin-seed-example.sql
 --
--- Manual, one-time example for creating the first ADMIN account. Run this
--- yourself against the target database (local or production) — it is never
--- executed by Claude, per the "no direct DB mutations" project rule.
+-- Manual, one-time step for creating the first ADMIN account. Run it yourself against the
+-- target database (local or production). Claude never runs it, per the "no direct DB mutations"
+-- project rule.
 --
--- 1. Generate a bcrypt hash for the admin's password, e.g. in a local Java/Node
---    REPL: new BCryptPasswordEncoder().encode("your-password-here")
--- 2. Replace the placeholders below and run the INSERT.
+-- 1. Sign up normally on the site with the email the admin will use, as a TUTOR, and create
+--    nothing with it. Use a fresh account: an admin has no tutor pages, so any courses or
+--    students it owned would be stranded. Sign-up handles the password hash, the email
+--    verification flag and every other column, so nothing here needs a hand-made bcrypt hash.
+-- 2. Replace the email below and run this. It changes exactly one row, and only if that account
+--    owns no courses.
+-- 3. Sign out and back in: the role is read at sign-in, so the old session stays a tutor's.
 
-INSERT INTO users (id, name, email, password, role, active, created_at)
-VALUES (
-    gen_random_uuid(),
-    'Admin Name',
-    'admin@example.com',
-    '$2a$10$REPLACE_WITH_A_REAL_BCRYPT_HASH',
-    'ADMIN',
-    true,
-    now()
-);
+UPDATE users
+SET role = 'ADMIN'
+WHERE email = 'admin@example.com'
+  AND role = 'TUTOR'
+  AND demo = false
+  AND NOT EXISTS (SELECT 1 FROM courses WHERE courses.tutor_id = users.id);
+
+-- Expect "UPDATE 1". "UPDATE 0" means the email is wrong, or the account isn't a plain tutor
+-- account with no courses.
