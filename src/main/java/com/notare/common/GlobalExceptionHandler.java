@@ -1,5 +1,7 @@
 package com.notare.common;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -13,8 +15,15 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
+        // 4xx are expected client errors; a 5xx (e.g. Sage's 502 when the Anthropic call fails)
+        // is ours to fix, and without this its cause left no trace in the logs.
+        if (ex.getStatusCode().is5xxServerError()) {
+            log.error("{} {}", ex.getStatusCode().value(), ex.getReason(), ex);
+        }
         return ResponseEntity.status(ex.getStatusCode())
                 .body(ApiResponse.error(ex.getReason() != null ? ex.getReason() : ex.getMessage()));
     }
@@ -45,6 +54,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
+        log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("An unexpected error occurred"));
     }

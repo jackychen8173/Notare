@@ -288,7 +288,7 @@ public class SageService {
                 .addUserMessage(userMessage)
                 .build();
 
-        return anthropicClient.messages().create(params).content().stream()
+        return callModel(() -> anthropicClient.messages().create(params)).content().stream()
                 .flatMap(block -> block.text().stream())
                 .map(TextBlock::text)
                 .collect(Collectors.joining("\n"))
@@ -304,12 +304,24 @@ public class SageService {
                 .addUserMessage(userMessage)
                 .build();
 
-        var block = anthropicClient.messages().create(params).content().stream()
+        var block = callModel(() -> anthropicClient.messages().create(params)).content().stream()
                 .flatMap(cb -> cb.text().stream())
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Sage did not return feedback"));
 
         return block.text();
+    }
+
+    // Same contract as SageChatService: an Anthropic failure (bad key, no credits, outage) is a 502
+    // "Sage is unavailable", not a generic 500. GlobalExceptionHandler logs the cause.
+    private static <R> R callModel(java.util.function.Supplier<R> call) {
+        try {
+            return call.get();
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Sage is unavailable right now", e);
+        }
     }
 
     private String toJson(Object value) {
