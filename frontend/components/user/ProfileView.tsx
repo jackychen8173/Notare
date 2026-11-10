@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -11,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useProfile, useUpdateProfile } from "@/hooks/useProfile";
+import { api, errorMessage } from "@/lib/api";
+import { emailEnabled } from "@/lib/features";
 
 const editProfileSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -23,6 +26,45 @@ const roleLabel: Record<"TUTOR" | "STUDENT" | "ADMIN", string> = {
   STUDENT: "Student",
   ADMIN: "Admin",
 };
+
+/** Shown under the email field until the address is confirmed. */
+function ConfirmEmailNotice() {
+  const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  async function resend() {
+    setState("sending");
+    setError(null);
+    try {
+      await api.post("/api/auth/verify-email/resend");
+      setState("sent");
+    } catch (e) {
+      setError(errorMessage(e));
+      setState("idle");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1 rounded-lg bg-warning-surface px-3 py-2 text-xs text-warning">
+      <p>
+        Not confirmed yet. Confirm it so password-reset emails can reach you.{" "}
+        {state === "sent" ? (
+          <span>Link sent. Check your inbox.</span>
+        ) : (
+          <button
+            type="button"
+            onClick={resend}
+            disabled={state === "sending"}
+            className="font-medium underline underline-offset-4 disabled:opacity-60"
+          >
+            {state === "sending" ? "Sending..." : "Send a new link"}
+          </button>
+        )}
+      </p>
+      {error ? <p className="text-destructive">{error}</p> : null}
+    </div>
+  );
+}
 
 export function ProfileView() {
   const profile = useProfile();
@@ -81,6 +123,7 @@ export function ProfileView() {
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="email">Email</Label>
             <Input id="email" value={profile.data.email} disabled />
+            {emailEnabled && !profile.data.emailVerified && !profile.data.demo ? <ConfirmEmailNotice /> : null}
           </div>
 
           <div className="flex flex-col gap-1.5">

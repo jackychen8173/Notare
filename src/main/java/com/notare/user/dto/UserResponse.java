@@ -11,7 +11,9 @@ public record UserResponse(
         String name,
         String email,
         UserRole role,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        boolean emailVerified,
+        boolean demo
 ) {
     public static UserResponse from(User user) {
         return new UserResponse(
@@ -19,7 +21,9 @@ public record UserResponse(
                 user.getName(),
                 user.getEmail(),
                 user.getRole(),
-                user.getCreatedAt()
+                user.getCreatedAt(),
+                user.isEmailVerified(),
+                user.isDemo()
         );
     }
 }

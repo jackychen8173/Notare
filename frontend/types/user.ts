@@ -9,6 +9,8 @@ export interface AuthSession {
   // One-click demo account from the landing page: sample data, Sage and code Run turned off.
   // Optional because sessions saved before this field existed don't have it.
   demo?: boolean;
+  // Optional for the same reason as demo.
+  emailVerified?: boolean;
 }
 
 // Single combined Google sign-in-or-sign-up response: an existing account logs straight in
@@ -32,4 +34,6 @@ export interface UserProfile {
   email: string;
   role: UserRole;
   createdAt: string;
+  emailVerified: boolean;
+  demo: boolean;
 }
