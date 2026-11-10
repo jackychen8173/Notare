@@ -51,7 +51,8 @@ public class DemoService {
         DemoSeeder.DemoAccounts accounts = demoSeeder.seed();
         User user = role == UserRole.TUTOR ? accounts.tutor() : accounts.student();
         String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
-        return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole(), true);
+        // Demo accounts use made-up addresses, so they never get a "confirm your email" prompt.
+        return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole(), true, true);
     }
 
     private void recordAttempt(String clientKey, int limit, String message) {

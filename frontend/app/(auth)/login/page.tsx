@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { saveSession } from "@/lib/auth";
+import { emailEnabled } from "@/lib/features";
 import type { AuthSession } from "@/types/user";
 import { useWakeBackend } from "@/hooks/useWakeBackend";
 
@@ -87,7 +88,17 @@ export default function LoginPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+                {emailEnabled ? (
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  >
+                    Forgot password?
+                  </Link>
+                ) : null}
+              </div>
               <Input
                 id="password"
                 type="password"

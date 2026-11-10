@@ -7,16 +7,22 @@ import com.notare.auth.dto.GoogleAuthRequest;
 import com.notare.auth.dto.GoogleAuthResult;
 import com.notare.auth.dto.LoginRequest;
 import com.notare.auth.dto.RegisterRequest;
+import com.notare.auth.token.AuthTokenPurpose;
+import com.notare.auth.token.AuthTokenRepository;
+import com.notare.auth.token.AuthTokenService;
+import com.notare.email.AuthEmails;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
 import com.notare.user.UserRole;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.GeneralSecurityException;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -26,17 +32,26 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final GoogleIdTokenVerifier googleIdTokenVerifier;
+    private final AuthTokenService authTokenService;
+    private final AuthTokenRepository authTokenRepository;
+    private final AuthEmails authEmails;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
-            GoogleIdTokenVerifier googleIdTokenVerifier
+            GoogleIdTokenVerifier googleIdTokenVerifier,
+            AuthTokenService authTokenService,
+            AuthTokenRepository authTokenRepository,
+            AuthEmails authEmails
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.googleIdTokenVerifier = googleIdTokenVerifier;
+        this.authTokenService = authTokenService;
+        this.authTokenRepository = authTokenRepository;
+        this.authEmails = authEmails;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -56,6 +71,7 @@ public class AuthService {
                 .build();
 
         userRepository.save(user);
+        sendVerificationEmail(user);
 
         return toAuthResponse(user);
     }
@@ -88,6 +104,11 @@ public class AuthService {
             if (!user.isActive()) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is deactivated");
             }
+            // Google only signs in with a verified address, so this also confirms the email.
+            if (!user.isEmailVerified()) {
+                user.setEmailVerified(true);
+                userRepository.save(user);
+            }
             return new GoogleAuthResult(false, toAuthResponse(user));
         }
 
@@ -107,11 +128,61 @@ public class AuthService {
                 .email(payload.getEmail())
                 .password(passwordEncoder.encode(UUID.randomUUID().toString()))
                 .role(request.role())
+                .emailVerified(true)
                 .build();
 
         userRepository.save(user);
 
         return new GoogleAuthResult(false, toAuthResponse(user));
+    }
+
+    /**
+     * Sends a reset link if the email belongs to an active, non-demo account. Always returns
+     * normally, and the email goes out on another thread, so the response doesn't reveal whether
+     * an account exists. This is also how a Google-only account sets its first password.
+     */
+    public void requestPasswordReset(String email) {
+        userRepository.findByEmail(email)
+                .filter(user -> user.isActive() && !user.isDemo())
+                .ifPresent(user -> authEmails.sendPasswordReset(
+                        user.getEmail(), user.getName(), authTokenService.issue(user, AuthTokenPurpose.PASSWORD_RESET)));
+    }
+
+    /** Sets the new password and signs out every existing session (see JwtAuthenticationFilter). */
+    @Transactional
+    public void confirmPasswordReset(String token, String newPassword) {
+        User user = authTokenService.redeem(token, AuthTokenPurpose.PASSWORD_RESET);
+        if (!user.isActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is deactivated");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangedAt(now);
+        // Opening the emailed link proves the inbox is theirs.
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        authTokenRepository.invalidateOpenTokens(user.getId(), AuthTokenPurpose.PASSWORD_RESET, now);
+    }
+
+    @Transactional
+    public void confirmEmailVerification(String token) {
+        User user = authTokenService.redeem(token, AuthTokenPurpose.EMAIL_VERIFICATION);
+        user.setEmailVerified(true);
+        userRepository.save(user);
+    }
+
+    /** Re-sends the confirmation link to the signed-in user; does nothing if already confirmed. */
+    public void resendEmailVerification(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in again"));
+        if (!user.isEmailVerified() && !user.isDemo()) {
+            sendVerificationEmail(user);
+        }
+    }
+
+    private void sendVerificationEmail(User user) {
+        authEmails.sendEmailVerification(
+                user.getEmail(), user.getName(), authTokenService.issue(user, AuthTokenPurpose.EMAIL_VERIFICATION));
     }
 
     private GoogleIdToken.Payload verifyGoogleIdToken(String idToken) {
@@ -136,6 +207,7 @@ public class AuthService {
 
     private AuthResponse toAuthResponse(User user) {
         String token = jwtUtil.generateToken(user.getId(), user.getEmail(), user.getRole().name());
-        return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole(), user.isDemo());
+        return new AuthResponse(token, user.getId(), user.getName(), user.getEmail(), user.getRole(), user.isDemo(),
+                user.isEmailVerified());
     }
 }

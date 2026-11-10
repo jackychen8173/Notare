@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // PreToolUse guard for Bash|PowerShell: blocks direct database access outright,
-// and forces a confirmation prompt for git push and file deletion, regardless of
-// permission mode. Scans the full command text (not just its prefix) so compound
+// and forces a confirmation prompt for destructive pushes and file deletion, regardless of
+// permission mode. Ordinary pushes, opening PRs and merging after CI passes are allowed
+// (the user authorized that on 2026-11-10); see CLAUDE.md "Safety harnesses". Scans the full command text (not just its prefix) so compound
 // commands like `docker exec db psql ...` or `build && git push` are still caught.
 
 let input = '';
@@ -40,7 +41,14 @@ process.stdin.on('end', () => {
     /\brailway\s+connect\b/i,
   ];
 
-  const pushPatterns = [/\bgit\s+push\b/i];
+  // Pushes and merges that can destroy work: force-pushes, deleting a remote branch or tag,
+  // mirroring, and merging a PR with --delete-branch (which would delete develop).
+  const destructivePushPatterns = [
+    /\bgit\s+push\b.*\s(--force|--force-with-lease|--force-if-includes|-f|--delete|-d|--mirror|--prune)\b/i,
+    /\bgit\s+push\b.*\s\+\S/i,
+    /\bgit\s+push\b\s+\S+\s+:\S/i,
+    /\bgh\s+pr\s+merge\b.*(\s-d\b|--delete-branch(?!=false))/i,
+  ];
 
   const deletePatterns = [
     /(^|[\s;&|])rm\s+/i,
@@ -62,9 +70,9 @@ process.stdin.on('end', () => {
   if (matches(dbPatterns)) {
     decision = 'deny';
     reason = 'Database changes must be performed by a human, not Claude. Ask the user to run this command themselves.';
-  } else if (matches(pushPatterns)) {
+  } else if (matches(destructivePushPatterns)) {
     decision = 'ask';
-    reason = 'Every push to GitHub must be explicitly confirmed by the user.';
+    reason = 'Force-pushes, remote branch deletion and merges that delete a branch need explicit user confirmation.';
   } else if (matches(deletePatterns)) {
     decision = 'ask';
     reason = 'File deletion requires explicit user confirmation.';
