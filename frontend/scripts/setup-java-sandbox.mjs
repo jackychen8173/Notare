@@ -31,7 +31,9 @@ async function main() {
     console.log("Verify output:\n" + (await check.stdout()));
 
     console.log("Snapshotting (this stops the sandbox automatically)...");
-    const snap = await sandbox.snapshot();
+    // expiration: 0 = never expires. Snapshots expire by default, and when this one did
+    // (found 2026-11-10: "Snapshot not found"), every Run on production failed with a 502.
+    const snap = await sandbox.snapshot({ expiration: 0 });
     snapshotId = snap.snapshotId;
   } catch (err) {
     console.error("Setup failed, stopping sandbox:", err);
