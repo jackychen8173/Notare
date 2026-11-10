@@ -51,6 +51,15 @@ public class User {
     @Column(nullable = false)
     private boolean demo = false;
 
+    // See V25__add_password_reset_and_email_verification.sql.
+    @Builder.Default
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
+    // Tokens issued before this are rejected by JwtAuthenticationFilter.
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

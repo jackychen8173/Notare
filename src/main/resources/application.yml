@@ -42,6 +42,20 @@ google:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
+# Account emails (password reset, email verification), see com.notare.email. Without
+# RESEND_API_KEY nothing is sent: the backend logs that it skipped the email, and logs the body
+# (with its one-time link) only when EMAIL_LOG_CONTENT=true, which is for local development only.
+# APP_BASE_URL is the frontend address the links point at.
+email:
+  resend-api-key: ${RESEND_API_KEY:}
+  from: ${EMAIL_FROM:Notare <onboarding@resend.dev>}
+  app-base-url: ${APP_BASE_URL:http://localhost:3000}
+  log-content: ${EMAIL_LOG_CONTENT:false}
+
+# Limits on the public account endpoints, see com.notare.auth.AuthRateLimits.
+rate-limit:
+  enabled: ${RATE_LIMIT_ENABLED:true}
+
 # Internal call from the backend to the Next.js /api/code-run route, which is the thing that
 # actually talks to Vercel Sandbox - see com.notare.coderun and CLAUDE.md.
 code-run:

@@ -2,6 +2,7 @@ package com.notare.auth;
 
 import com.notare.user.User;
 import com.notare.user.UserRepository;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -16,6 +17,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.List;
 
 @Component
@@ -43,11 +48,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(BEARER_PREFIX.length());
             try {
                 if (jwtUtil.isValid(token)) {
-                    String email = jwtUtil.extractEmail(token);
-                    String role = jwtUtil.extractRole(token);
+                    Claims claims = jwtUtil.parseClaims(token);
+                    String email = claims.getSubject();
+                    String role = claims.get("role", String.class);
 
                     boolean active = userRepository.findByEmail(email)
-                            .map(User::isActive)
+                            .map(user -> user.isActive() && issuedAfterPasswordChange(claims.getIssuedAt(), user))
                             .orElse(false);
 
                     if (active) {
@@ -65,5 +71,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * A password reset sets User.passwordChangedAt; tokens issued before it no longer work, which
+     * signs out every other session. JWT issue times have whole-second precision, so the change
+     * time is truncated to the second before comparing.
+     */
+    private static boolean issuedAfterPasswordChange(Date issuedAt, User user) {
+        LocalDateTime changedAt = user.getPasswordChangedAt();
+        if (changedAt == null) {
+            return true;
+        }
+        if (issuedAt == null) {
+            return false;
+        }
+        Date changed = Date.from(changedAt.truncatedTo(ChronoUnit.SECONDS).atZone(ZoneId.systemDefault()).toInstant());
+        return !issuedAt.before(changed);
     }
 }

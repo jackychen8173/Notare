@@ -40,9 +40,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
         "JWT_SECRET=integration-test-secret-key-0123456789-abcdefghijklmnopqrstuvwxyz",
         "GOOGLE_OAUTH_CLIENT_ID=test-client.apps.googleusercontent.com",
         "CODE_RUN_INTERNAL_SECRET=test-secret",
+        // Tests create many accounts from one address; AuthRateLimitTest re-enables the limits.
+        "rate-limit.enabled=false",
 })
 @AutoConfigureMockMvc
-@Import(IntegrationTest.Containers.class)
+@Import({IntegrationTest.Containers.class, CapturingEmailSender.Config.class})
 public abstract class IntegrationTest {
 
     @TestConfiguration(proxyBeanMethods = false)
