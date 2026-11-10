@@ -17,6 +17,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth";
 import type { UserRole } from "@/types/user";
+import { useWakeBackend } from "@/hooks/useWakeBackend";
 
 const ROLE_HOME: Record<UserRole, string> = {
   TUTOR: "/dashboard",
@@ -49,6 +50,7 @@ const FEATURES: { title: string; body: string; fragment: ReactNode }[] = [
 
 export default function Home() {
   const router = useRouter();
+  useWakeBackend();
 
   // Signed-in visitors go straight to their app. The landing page renders immediately for everyone
   // else rather than waiting on this check, since most visitors here aren't signed in.

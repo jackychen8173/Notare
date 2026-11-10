@@ -5,6 +5,14 @@ spring:
     url: ${DATABASE_URL}
     username: ${DATABASE_USERNAME}
     password: ${DATABASE_PASSWORD}
+    hikari:
+      # Railway's Serverless mode sleeps the service after 10 minutes with no outbound traffic.
+      # HikariCP's defaults (10 connections held open forever, keepalive every 2 minutes) would
+      # keep it awake. With no minimum, idle connections close after 30s and the pool goes quiet;
+      # the first request after that pays one connection setup (milliseconds on Railway's
+      # private network).
+      minimum-idle: 0
+      idle-timeout: 30000
   jpa:
     hibernate:
       ddl-auto: validate

@@ -40,7 +40,8 @@ test.describe("teacher (demo)", () => {
   });
 
   test("course discussions open with their posts", async ({ page }) => {
-    await page.locator('main a[href^="/courses/"]').first().click();
+    // The demo seeds discussions in Period 3 only, and course lists have no fixed order.
+    await page.getByRole("link", { name: "AP Computer Science A: Period 3", exact: true }).first().click();
     await page.getByRole("link", { name: /^Discussions/ }).click();
     const thread = page.locator('main a[href^="/discussions/"]').first();
     const title = (await thread.innerText()).split("\n")[0].trim();

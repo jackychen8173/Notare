@@ -46,6 +46,11 @@ class AuthAndAccessTest extends IntegrationTest {
     }
 
     @Test
+    void healthCheckIsPublic() throws Exception {
+        assertThat(call(get("/api/health"), null, null, 200).get("status").asText()).isEqualTo("ok");
+    }
+
+    @Test
     void roleGatedEndpointsReturn403NotA500() throws Exception {
         Account student = register("STUDENT");
         Account tutor = register("TUTOR");

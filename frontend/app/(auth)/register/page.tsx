@@ -23,6 +23,7 @@ import {
 import { api } from "@/lib/api";
 import { saveSession } from "@/lib/auth";
 import type { AuthSession } from "@/types/user";
+import { useWakeBackend } from "@/hooks/useWakeBackend";
 
 const registerSchema = z
   .object({
@@ -41,6 +42,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
+  useWakeBackend();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
