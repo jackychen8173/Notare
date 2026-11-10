@@ -56,6 +56,19 @@ email:
 rate-limit:
   enabled: ${RATE_LIMIT_ENABLED:true}
 
+# Error tracking. Without SENTRY_DSN the SDK stays off (local runs, tests). Every logged ERROR
+# becomes a Sentry event, which is how handled 5xx errors get there (GlobalExceptionHandler logs
+# them). No tracing and no personal data: students are often minors, and tracing would spend the
+# free quota. The SDK only sends when there's an error, so it doesn't keep the backend awake.
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${RAILWAY_ENVIRONMENT_NAME:local}
+  release: ${RAILWAY_GIT_COMMIT_SHA:local}
+  send-default-pii: false
+  logging:
+    minimum-event-level: error
+    minimum-breadcrumb-level: info
+
 # Internal call from the backend to the Next.js /api/code-run route, which is the thing that
 # actually talks to Vercel Sandbox - see com.notare.coderun and CLAUDE.md.
 code-run:
