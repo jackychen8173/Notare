@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
 import { saveSession } from "@/lib/auth";
 import type { AuthSession } from "@/types/user";
+import { useWakeBackend } from "@/hooks/useWakeBackend";
 
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
@@ -27,6 +28,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  useWakeBackend();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
