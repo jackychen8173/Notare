@@ -1,5 +1,16 @@
 {
   "permissions": {
+    "allow": [
+      "Bash(git push origin *)",
+      "Bash(git push -u origin *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr checks *)",
+      "Bash(gh pr view *)",
+      "Bash(gh pr merge * --squash --delete-branch=false)",
+      "PowerShell(git push origin *)",
+      "PowerShell(gh pr create *)",
+      "PowerShell(gh pr merge * --squash --delete-branch=false)"
+    ],
     "deny": [
       "Bash(psql *)",
       "Bash(mysql *)",
@@ -20,20 +31,25 @@
       "PowerShell(mysql *)"
     ],
     "ask": [
-      "Bash(git push*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
       "Bash(rm *)",
       "Bash(git rm *)",
       "Bash(git clean*)",
-      "PowerShell(git push*)",
+      "PowerShell(git push --force*)",
       "PowerShell(Remove-Item *)",
       "PowerShell(rmdir *)",
       "PowerShell(del *)"
     ]
   },
   "autoMode": {
+    "allow": [
+      "$defaults",
+      "Pushing commits to origin (not force-pushing), opening pull requests into main, and squash-merging a pull request into main with --delete-branch=false once all of its required CI checks have passed. The user authorized this on 2026-11-10, knowing that a merge into main auto-deploys production on Railway and Vercel."
+    ],
     "hard_deny": [
       "$defaults",
-      "Never run git push, or any command that pushes commits to a remote repository, without the user's explicit real-time confirmation for that specific push.",
+      "Never force-push, delete a remote branch or tag, or merge a pull request whose required CI checks have not all passed, without the user's explicit real-time confirmation for that specific action.",
       "Never delete, remove, or truncate files (rm, del, Remove-Item, rmdir, git rm, git clean, find -delete, etc.) without the user's explicit real-time confirmation for that specific deletion.",
       "Never run a database CLI (psql, mysql, mongosh, sqlcmd, sqlite3, redis-cli) or apply/mutate a database migration (flyway migrate/clean/repair/undo/baseline, liquibase update/rollback/dropAll). Database changes are performed by the user, never by Claude."
     ]
