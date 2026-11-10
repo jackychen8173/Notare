@@ -30,8 +30,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+/**
+ * Deliberately NOT @Transactional at class level. A chat turn makes up to MAX_TOOL_ROUNDTRIPS
+ * model calls, and each tool call delegates into @Transactional services. Sharing one transaction
+ * across the turn meant an ordinary tool failure (e.g. get_rubric on an assignment with no rubric)
+ * marked the whole turn rollback-only: the catch below turned it into an is_error result, but the
+ * commit then threw UnexpectedRollbackException and the tutor got a 500 (SageChatToolErrorTest).
+ * Instead, each tool call runs in its own transaction (SageToolExecutor), and each message is
+ * persisted as soon as it exists. A confirmed write therefore stays committed together with its
+ * CONFIRMED status even if a later model call fails, so it can't be confirmed (and run) twice.
+ */
 @Service
-@Transactional
 public class SageChatService {
 
     private static final Model MODEL = Model.CLAUDE_SONNET_4_6;
@@ -221,8 +230,8 @@ public class SageChatService {
                 description = toolExecutor.describeAction(call.name(), input, tutor);
             } catch (ResponseStatusException e) {
                 // Never let a tool-execution error (here, describeAction's ownership/ID
-                // validation) escape the loop - the whole service is class-level @Transactional,
-                // so an uncaught exception here would roll back the entire turn. Persist the
+                // validation) escape the loop - it would fail the whole turn with the messages
+                // already saved but no answer. Persist the
                 // assistant message without a pending action, feed the failure back to the model
                 // as an is_error tool result, and recurse so Sage can try to recover - same
                 // pattern as the read-tool error path below.

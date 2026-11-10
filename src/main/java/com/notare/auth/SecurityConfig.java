@@ -57,7 +57,12 @@ public class SecurityConfig {
 
     private CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        // Patterns, so CORS_ALLOWED_ORIGINS can also hold a wildcard such as
+        // https://notare-frontend-*-jackychen8173s-projects.vercel.app for Vercel previews.
+        // An exact origin still matches only itself. '*' also matches hyphens, so such a pattern
+        // matches any Vercel team slug ending the same way; acceptable only because auth is a bearer
+        // token (no cookies, no allowCredentials), so CORS isn't the boundary that protects users.
+        configuration.setAllowedOriginPatterns(Arrays.stream(allowedOrigins.split(",")).map(String::trim).toList());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
 
