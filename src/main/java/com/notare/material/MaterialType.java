@@ -4,5 +4,7 @@ public enum MaterialType {
     LINK,
     GOOGLE_DOC,
     GOOGLE_SLIDES,
-    PDF
+    PDF,
+    /** An uploaded file (com.notare.file); url is unused. */
+    FILE
 }

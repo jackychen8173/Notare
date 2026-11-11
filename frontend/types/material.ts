@@ -1,4 +1,6 @@
-export type MaterialType = "LINK" | "GOOGLE_DOC" | "GOOGLE_SLIDES" | "PDF";
+import type { StoredFileInfo } from "@/types/file";
+
+export type MaterialType = "LINK" | "GOOGLE_DOC" | "GOOGLE_SLIDES" | "PDF" | "FILE";
 
 export interface Material {
   id: string;
@@ -10,4 +12,6 @@ export interface Material {
   url: string | null;
   type: MaterialType;
   createdAt: string;
+  /** Set for an uploaded file (type FILE). */
+  file: StoredFileInfo | null;
 }

@@ -29,7 +29,7 @@ export function DemoBanner() {
       </button>
       <span className="inline-flex items-center gap-1.5">
         <IconFlask className="size-4 text-primary" stroke={1.75} aria-hidden />
-        You&apos;re exploring a demo classroom with sample data. Sage and code Run are turned off.
+        You&apos;re exploring a demo classroom with sample data. Sage, code Run and file uploads are turned off.
       </span>
       <button
         type="button"

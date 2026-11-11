@@ -7,6 +7,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { AssignmentTiming, LateBadge } from "@/components/assignment/AssignmentTiming";
 import { CodeReviewView } from "@/components/assignment/CodeReviewView";
 import { SubmissionForm } from "@/components/assignment/SubmissionForm";
+import { SubmissionFiles } from "@/components/file/FileList";
 import { RubricView } from "@/components/rubric/RubricView";
 import { SageFeedbackBlock } from "@/components/sage/SageFeedbackBlock";
 import { Badge } from "@/components/ui/badge";
@@ -204,6 +205,7 @@ function SubmissionFeedback({ submission, previous }: { submission: Submission; 
         comments={released ? (comments.data ?? []) : []}
         compareTo={previous && showChanges ? previous.content : null}
       />
+      <SubmissionFiles submissionId={submission.id} />
 
       {released ? (
         <div className="grid gap-4 md:grid-cols-2">

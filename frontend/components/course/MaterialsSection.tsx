@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { IconPaperclip } from "@tabler/icons-react";
@@ -23,7 +23,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { FileList } from "@/components/file/FileList";
+import { MAX_FILE_BYTES, useUploadMaterialFile, useUploadsEnabled } from "@/hooks/useFiles";
 import { useCreateMaterial, useDeleteMaterial, useMaterials, useMyCourseMaterials } from "@/hooks/useMaterials";
+import { errorMessage } from "@/lib/api";
 import type { Material, MaterialType } from "@/types/material";
 
 const MATERIAL_TYPE_LABELS: Record<MaterialType, string> = {
@@ -31,6 +34,7 @@ const MATERIAL_TYPE_LABELS: Record<MaterialType, string> = {
   GOOGLE_DOC: "Google Doc",
   GOOGLE_SLIDES: "Google Slides",
   PDF: "PDF",
+  FILE: "Upload a file",
 };
 
 // Extracts a Google file ID from any Google Docs/Slides share URL (.../d/{id}/edit?...) and builds
@@ -56,13 +60,17 @@ const materialSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   url: z.string().optional(),
-  type: z.enum(["LINK", "GOOGLE_DOC", "GOOGLE_SLIDES", "PDF"]),
+  type: z.enum(["LINK", "GOOGLE_DOC", "GOOGLE_SLIDES", "PDF", "FILE"]),
 });
 type MaterialValues = z.infer<typeof materialSchema>;
 
 function NewMaterialDialog({ courseId }: { courseId: string }) {
   const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const createMaterial = useCreateMaterial(courseId);
+  const uploadFile = useUploadMaterialFile(courseId);
+  const uploadsEnabled = useUploadsEnabled();
   const {
     register,
     control,
@@ -73,18 +81,33 @@ function NewMaterialDialog({ courseId }: { courseId: string }) {
     resolver: zodResolver(materialSchema),
     defaultValues: { type: "LINK" },
   });
+  const type = useWatch({ control, name: "type" });
 
-  function onSubmit(values: MaterialValues) {
-    createMaterial.mutate(values, {
-      onSuccess: () => {
-        reset();
-        setOpen(false);
-      },
-    });
+  function close() {
+    reset();
+    setFile(null);
+    setFileError(null);
+    setOpen(false);
   }
 
+  function onSubmit(values: MaterialValues) {
+    if (values.type === "FILE") {
+      if (!file) {
+        setFileError("Choose a file");
+        return;
+      }
+      uploadFile.mutate(
+        { file, title: values.title, description: values.description || undefined },
+        { onSuccess: close },
+      );
+      return;
+    }
+    createMaterial.mutate(values, { onSuccess: close });
+  }
+  const pending = createMaterial.isPending || uploadFile.isPending;
+
   return (
-    <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) reset(); }}>
+    <Dialog open={open} onOpenChange={(next) => { if (next) setOpen(true); else close(); }}>
       <DialogTrigger render={<Button variant="outline" size="sm">New material</Button>} />
       <DialogContent>
         <DialogHeader>
@@ -100,10 +123,32 @@ function NewMaterialDialog({ courseId }: { courseId: string }) {
             <Label htmlFor="material-description">Description (optional)</Label>
             <Textarea id="material-description" rows={3} {...register("description")} />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="material-url">Link (optional)</Label>
-            <Input id="material-url" type="url" placeholder="https://..." {...register("url")} />
-          </div>
+          {type === "FILE" ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="material-file">File</Label>
+              <Input
+                id="material-file"
+                type="file"
+                onChange={(event) => {
+                  const picked = event.target.files?.[0] ?? null;
+                  if (picked && picked.size > MAX_FILE_BYTES) {
+                    setFile(null);
+                    setFileError("Files can be up to 10 MB");
+                    return;
+                  }
+                  setFile(picked);
+                  setFileError(null);
+                }}
+              />
+              {fileError ? <p className="text-xs text-destructive">{fileError}</p> : null}
+              <p className="text-xs text-muted-foreground">Up to 10 MB. Students in the course can open it.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="material-url">Link (optional)</Label>
+              <Input id="material-url" type="url" placeholder="https://..." {...register("url")} />
+            </div>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="material-type">Type</Label>
             <Controller
@@ -115,7 +160,9 @@ function NewMaterialDialog({ courseId }: { courseId: string }) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.keys(MATERIAL_TYPE_LABELS) as MaterialType[]).map((value) => (
+                    {(Object.keys(MATERIAL_TYPE_LABELS) as MaterialType[])
+                      .filter((value) => value !== "FILE" || uploadsEnabled)
+                      .map((value) => (
                       <SelectItem key={value} value={value}>
                         {MATERIAL_TYPE_LABELS[value]}
                       </SelectItem>
@@ -125,12 +172,15 @@ function NewMaterialDialog({ courseId }: { courseId: string }) {
               )}
             />
             <p className="text-xs text-muted-foreground">
-              Google Doc/Slides/PDF render inline for students; Link just opens in a new tab.
+              Google Doc/Slides/PDF links render inline for students; Link just opens in a new tab.
             </p>
           </div>
+          {createMaterial.isError || uploadFile.isError ? (
+            <p className="text-xs text-destructive">{errorMessage(createMaterial.error ?? uploadFile.error)}</p>
+          ) : null}
           <DialogFooter>
-            <Button type="submit" disabled={createMaterial.isPending}>
-              {createMaterial.isPending ? "Adding..." : "Add material"}
+            <Button type="submit" disabled={pending}>
+              {uploadFile.isPending ? "Uploading..." : createMaterial.isPending ? "Adding..." : "Add material"}
             </Button>
           </DialogFooter>
         </form>
@@ -173,6 +223,7 @@ function MaterialCard({ material, editable, onDelete, deletePending }: {
             </Button>
           ) : null}
         </div>
+        {material.file ? <FileList files={[material.file]} /> : null}
         {embedUrl ? (
           // The link above stays visible regardless - if the embed fails silently (a private doc,
           // revoked sharing), there's still a working way to open the material.
@@ -212,7 +263,7 @@ export function MaterialsSection({ courseId, editable }: { courseId: string; edi
           ))}
         </div>
       ) : (
-        <EmptyState icon={IconPaperclip} title="No materials yet" description="Share links, Google Docs, Google Slides, or PDFs with the class." />
+        <EmptyState icon={IconPaperclip} title="No materials yet" description="Share links, Google Docs, Google Slides, PDFs or uploaded files with the class." />
       )}
     </div>
   );

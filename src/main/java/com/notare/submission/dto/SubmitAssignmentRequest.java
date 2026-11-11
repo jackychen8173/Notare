@@ -1,8 +1,8 @@
 package com.notare.submission.dto;
 
-import jakarta.validation.constraints.NotBlank;
 
 public record SubmitAssignmentRequest(
-        @NotBlank String content
+        // May be blank when the student attached files (POST /api/student/assignments/{id}/files).
+        String content
 ) {
 }
