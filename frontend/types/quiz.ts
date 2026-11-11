@@ -31,6 +31,9 @@ export interface Quiz {
   title: string;
   description: string | null;
   timeLimitMinutes: number | null;
+  /** With the course zone's offset ("2026-11-20T23:59:00-07:00"); null when there's no due date. */
+  dueAt: string | null;
+  timeZone: string;
   publishedAt: string | null;
   totalPointsPossible: number;
   questions: QuizQuestion[];

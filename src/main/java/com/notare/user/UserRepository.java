@@ -12,6 +12,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmail(String email);
 
+    Optional<User> findByCalendarToken(String calendarToken);
+
     List<User> findByRole(UserRole role);
 
     long countByRole(UserRole role);

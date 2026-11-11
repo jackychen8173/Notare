@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyQuizAttempt, useStartQuizAttempt } from "@/hooks/useQuizAttempts";
 import { useMyQuiz } from "@/hooks/useQuizzes";
+import { formatDueAt } from "@/lib/dates";
 import type { AttemptStatus } from "@/types/quizAttempt";
 
 const attemptStatusVariant: Record<AttemptStatus, "default" | "secondary"> = {
@@ -60,6 +61,7 @@ export default function StudentQuizDetailPage({ params }: { params: Promise<{ id
           {quiz.data.timeLimitMinutes ? ` · ${quiz.data.timeLimitMinutes} min, hard cutoff` : " · Untimed"}
           {" · "}
           {quiz.data.totalPointsPossible} pts
+          {quiz.data.dueAt ? ` · Due ${formatDueAt(quiz.data.dueAt, quiz.data.timeZone)}` : ""}
         </p>
         {quiz.data.description ? (
           <p className="mt-2 text-sm text-muted-foreground">{quiz.data.description}</p>

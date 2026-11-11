@@ -15,6 +15,7 @@ import { trimTime, weekdayIndex } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 import type { Assignment } from "@/types/assignment";
 import type { Course, CourseColor } from "@/types/course";
+import type { Quiz } from "@/types/quiz";
 import type { Session } from "@/types/session";
 
 type EventKind = "meeting" | "assignment" | "session";
@@ -36,6 +37,7 @@ type ViewId = (typeof VIEWS)[number]["id"];
 export interface CalendarLinks {
   course: (id: string) => string;
   assignment: (id: string) => string;
+  quiz: (id: string) => string;
   /** Omitted when this role has no session detail page (students). */
   session?: (id: string) => string;
 }
@@ -43,6 +45,8 @@ export interface CalendarLinks {
 interface CalendarViewProps {
   courses: Course[];
   assignments: Assignment[];
+  /** Only the ones with a due date show up. */
+  quizzes: Quiz[];
   sessions: Session[];
   links: CalendarLinks;
   /** How a session is titled for this role, e.g. the student's name for a tutor. */
@@ -60,6 +64,7 @@ function dayAfter(value: string): string {
 function buildEvents(
   courses: Course[],
   assignments: Assignment[],
+  quizzes: Quiz[],
   sessions: Session[],
   links: CalendarLinks,
   sessionTitle: (session: Session) => string,
@@ -98,6 +103,19 @@ function buildEvents(
         courseId: assignment.courseId,
         color: colorOf.get(assignment.courseId),
       },
+    });
+  }
+
+  for (const quiz of quizzes) {
+    if (!quiz.dueAt) continue;
+    const { date, time } = wallClockParts(quiz.dueAt);
+    events.push({
+      id: `quiz-${quiz.id}`,
+      title: `Quiz due ${formatWallTime(time)}: ${quiz.title}`,
+      start: date,
+      allDay: true,
+      url: links.quiz(quiz.id),
+      extendedProps: { kind: "assignment", courseId: quiz.courseId, color: colorOf.get(quiz.courseId) },
     });
   }
 
@@ -151,7 +169,7 @@ function FilterChip({
   );
 }
 
-export function CalendarView({ courses, assignments, sessions, links, sessionTitle }: CalendarViewProps) {
+export function CalendarView({ courses, assignments, quizzes, sessions, links, sessionTitle }: CalendarViewProps) {
   const router = useRouter();
   const calendarRef = useRef<FullCalendar>(null);
   const [title, setTitle] = useState("");
@@ -167,12 +185,12 @@ export function CalendarView({ courses, assignments, sessions, links, sessionTit
   }, []);
 
   const events = useMemo(() => {
-    return buildEvents(courses, assignments, sessions, links, sessionTitle).filter((event) => {
+    return buildEvents(courses, assignments, quizzes, sessions, links, sessionTitle).filter((event) => {
       const { kind, courseId } = event.extendedProps as { kind: EventKind; courseId: string | null };
       if (hiddenKinds.has(kind)) return false;
       return !courseId || !hiddenCourses.has(courseId);
     });
-  }, [courses, assignments, sessions, links, sessionTitle, hiddenCourses, hiddenKinds]);
+  }, [courses, assignments, quizzes, sessions, links, sessionTitle, hiddenCourses, hiddenKinds]);
 
   function toggle<T>(set: Set<T>, value: T): Set<T> {
     const next = new Set(set);

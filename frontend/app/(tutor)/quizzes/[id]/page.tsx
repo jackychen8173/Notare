@@ -11,6 +11,7 @@ import { IconListCheck } from "@tabler/icons-react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { QUESTION_TYPE_LABELS, QuestionFormDialog } from "@/components/quiz/QuestionFormDialog";
+import { QuizDueFields, quizDueAt, quizDueDefaults } from "@/components/quiz/QuizDueFields";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,6 +39,7 @@ import {
 } from "@/hooks/useQuizzes";
 import { useGradeCategories } from "@/hooks/useGradeCategories";
 import { useTopics } from "@/hooks/useTopics";
+import { formatDueAt } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 import type { AttemptStatus } from "@/types/quizAttempt";
 import type { Quiz, QuizQuestion } from "@/types/quiz";
@@ -55,6 +57,8 @@ const editQuizSchema = z.object({
   timeLimitMinutes: z.string().optional(),
   topicId: z.string().optional(),
   gradeCategoryId: z.string().optional(),
+  dueDate: z.string().optional(),
+  dueTime: z.string().optional(),
 });
 
 type EditQuizValues = z.infer<typeof editQuizSchema>;
@@ -78,6 +82,7 @@ function EditQuizDialog({ quiz }: { quiz: Quiz }) {
       timeLimitMinutes: quiz.timeLimitMinutes ? String(quiz.timeLimitMinutes) : "",
       topicId: quiz.topicId ?? NO_TOPIC,
       gradeCategoryId: quiz.gradeCategoryId ?? NO_TOPIC,
+      ...quizDueDefaults(quiz.dueAt),
     },
   });
 
@@ -88,6 +93,7 @@ function EditQuizDialog({ quiz }: { quiz: Quiz }) {
       timeLimitMinutes: values.timeLimitMinutes ? Number(values.timeLimitMinutes) : undefined,
       topicId: values.topicId === NO_TOPIC ? undefined : values.topicId,
       gradeCategoryId: values.gradeCategoryId === NO_TOPIC ? undefined : values.gradeCategoryId,
+      dueAt: quizDueAt(values.dueDate, values.dueTime),
     };
     updateQuiz.mutate(input, { onSuccess: () => setOpen(false) });
   }
@@ -113,6 +119,12 @@ function EditQuizDialog({ quiz }: { quiz: Quiz }) {
             <Label htmlFor="edit-quiz-time-limit">Time limit, minutes (optional)</Label>
             <Input id="edit-quiz-time-limit" type="number" min={1} {...register("timeLimitMinutes")} />
           </div>
+          <QuizDueFields
+            idPrefix="edit-quiz"
+            timeZone={quiz.timeZone}
+            dateProps={register("dueDate")}
+            timeProps={register("dueTime")}
+          />
           {topics.data && topics.data.length > 0 ? (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="edit-quiz-topicId">Unit (optional)</Label>
@@ -326,6 +338,7 @@ export default function QuizDetailPage({ params }: { params: Promise<{ id: strin
             {quiz.data.timeLimitMinutes ? ` · ${quiz.data.timeLimitMinutes} min, hard cutoff` : " · Untimed"}
             {" · "}
             {quiz.data.totalPointsPossible} pts total
+            {quiz.data.dueAt ? ` · Due ${formatDueAt(quiz.data.dueAt, quiz.data.timeZone)}` : ""}
           </p>
           {quiz.data.description ? (
             <p className="mt-2 text-sm text-muted-foreground">{quiz.data.description}</p>

@@ -410,6 +410,25 @@ holds the course-grade rules: only released scored work counts; without categori
 over points; with categories it's the weight-averaged category percents over the categories that
 have graded work, and work outside every category doesn't count.
 
+## `calendar` — calendar subscribe feeds
+
+### `CalendarFeedController`
+`GET /api/calendar-feed` returns the signed-in person's `{token}` (null until they make one);
+`POST /api/calendar-feed` makes one or replaces it, so the old link stops working. Both need a
+JWT, any role. `GET /api/calendar-feeds/{token}` (a trailing `.ics` is ignored) is public in
+`SecurityConfig`: the token is the credential. It returns `text/calendar`, 404 for an unknown
+token or a deactivated account. Subscriptions use the frontend's cached `/api/calendar/{token}.ics`
+proxy rather than this URL.
+
+### `CalendarFeedService` / `ICalendar`
+Tutors get their non-archived courses; students the non-archived courses they're enrolled in,
+only assignments that have opened, and published quizzes. Events: one per class meeting (4 weeks
+back to 26 weeks ahead, inside the term dates), each assignment and dated quiz due time (as a
+zero-length event), and every non-cancelled tutoring session (its wall-clock time read in the
+course's zone, or `America/Vancouver` without a course). Due times and sessions older than 90
+days are left out. `ICalendar` writes RFC 5545 text: UTC times, escaped TEXT values, lines folded
+at 75 octets without splitting a UTF-8 character. Event links use `email.app-base-url`.
+
 ## `common` — cross-cutting concerns shared by every feature package
 
 ### `ApiResponse<T>`

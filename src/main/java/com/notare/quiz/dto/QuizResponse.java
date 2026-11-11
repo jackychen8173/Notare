@@ -4,6 +4,7 @@ import com.notare.quiz.Quiz;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -18,6 +19,9 @@ public record QuizResponse(
         String title,
         String description,
         Integer timeLimitMinutes,
+        // With the course zone's offset, like AssignmentResponse.dueAt; null when there's none.
+        OffsetDateTime dueAt,
+        String timeZone,
         LocalDateTime publishedAt,
         BigDecimal totalPointsPossible,
         List<QuestionResponse> questions
@@ -34,6 +38,8 @@ public record QuizResponse(
                 quiz.getTitle(),
                 quiz.getDescription(),
                 quiz.getTimeLimitMinutes(),
+                quiz.getDueAt() != null ? quiz.getDueAt().atZone(quiz.getCourse().zone()).toOffsetDateTime() : null,
+                quiz.getCourse().getTimeZone(),
                 quiz.getPublishedAt(),
                 totalPointsPossible(questions),
                 questions

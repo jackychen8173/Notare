@@ -20,9 +20,9 @@ public record GradebookResponse(
     public enum ItemKind { ASSIGNMENT, QUIZ }
 
     public enum CellStatus {
-        /** Nothing handed in, and it isn't due yet (quizzes have no due time, so they stay here). */
+        /** Nothing handed in, and it isn't due yet (or has no due time). */
         NOT_SUBMITTED,
-        /** Nothing handed in, and the due time has passed. */
+        /** Nothing handed in (no quiz attempt started), and the due time has passed. */
         MISSING,
         /** A quiz attempt that's still running. */
         IN_PROGRESS,

@@ -77,6 +77,7 @@ public class QuizService {
                 .title(request.title())
                 .description(request.description())
                 .timeLimitMinutes(request.timeLimitMinutes())
+                .dueAt(toInstant(request.dueAt(), course))
                 .build();
 
         quizRepository.save(quiz);
@@ -106,6 +107,7 @@ public class QuizService {
         quiz.setTitle(request.title());
         quiz.setDescription(request.description());
         quiz.setTimeLimitMinutes(request.timeLimitMinutes());
+        quiz.setDueAt(toInstant(request.dueAt(), quiz.getCourse()));
         quiz.setTopic(topic);
         quiz.setGradeCategory(gradeCategory);
         quizRepository.save(quiz);
@@ -252,6 +254,11 @@ public class QuizService {
         return gradeCategoryRepository.findById(gradeCategoryId)
                 .filter(candidate -> candidate.getCourse().getId().equals(course.getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Grade category not found"));
+    }
+
+    /** A wall-clock time in the course's time zone, as a moment. */
+    private static java.time.Instant toInstant(java.time.LocalDateTime wallClock, Course course) {
+        return wallClock == null ? null : wallClock.atZone(course.zone()).toInstant();
     }
 
     private QuizResponse loadQuizResponse(Quiz quiz) {

@@ -255,6 +255,7 @@ class DemoSeeder {
                 .title("Unit 1 Check-in")
                 .description("Three quick questions on primitive types. Multiple choice and true/false are graded instantly.")
                 .timeLimitMinutes(10)
+                .dueAt(today.plusDays(3).atTime(AssignmentService.DEFAULT_DUE_TIME).atZone(period3.zone()).toInstant())
                 .publishedAt(now.minusDays(2))
                 .build());
         QuizQuestion division = question(checkIn, QuestionType.MULTIPLE_CHOICE,

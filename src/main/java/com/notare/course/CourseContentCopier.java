@@ -157,6 +157,7 @@ public class CourseContentCopier {
                 .title(quiz.getTitle())
                 .description(quiz.getDescription())
                 .timeLimitMinutes(quiz.getTimeLimitMinutes())
+                .dueAt(quiz.getDueAt())
                 .publishedAt(quiz.getPublishedAt() != null ? LocalDateTime.now() : null)
                 .createdAt(quiz.getCreatedAt())
                 .build());

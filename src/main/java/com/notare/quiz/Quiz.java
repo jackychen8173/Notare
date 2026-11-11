@@ -18,6 +18,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -53,6 +54,11 @@ public class Quiz {
 
     @Column(name = "time_limit_minutes")
     private Integer timeLimitMinutes;
+
+    // Optional and informational: a quiz past due still takes its one attempt. Set and shown as a
+    // wall-clock time in the course's time zone, like Assignment.dueAt.
+    @Column(name = "due_at")
+    private Instant dueAt;
 
     // Draft gate: null means the quiz is still being built and is invisible to students, same idiom
     // as Course.archivedAt / Submission.releasedAt.

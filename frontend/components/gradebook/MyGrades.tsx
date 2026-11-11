@@ -108,7 +108,9 @@ export function MyGrades({ courseId }: { courseId: string }) {
                   </Link>
                   <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] text-muted-foreground">
                     <span className="uppercase">
-                      {column.kind === "QUIZ" ? "quiz" : column.dueAt ? `due ${formatDueDate(column.dueAt.slice(0, 10))}` : ""}
+                      {[column.kind === "QUIZ" ? "quiz" : null, column.dueAt ? `due ${formatDueDate(column.dueAt.slice(0, 10))}` : null]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                     {column.categoryId ? <span>{categoryName.get(column.categoryId)}</span> : null}
                     {reason ? <span>Doesn&apos;t count toward your grade</span> : null}
