@@ -24,8 +24,14 @@ export function CodeOutputPanel({ result }: CodeOutputPanelProps) {
       <Card>
         <CardContent>
           <p className="text-sm text-destructive">
-            Your program didn&apos;t finish in time (30s limit) — check for an infinite loop.
+            Your program didn&apos;t finish in time (10 second limit). Check for an infinite loop, or
+            a Scanner waiting for more input than you typed.
           </p>
+          {result.stdout ? (
+            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-xs text-foreground">
+              {result.stdout}
+            </pre>
+          ) : null}
         </CardContent>
       </Card>
     );

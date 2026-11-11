@@ -7,3 +7,11 @@ export interface CodeRunResult {
   exitCode: number | null;
   timedOut: boolean;
 }
+
+/** A text file a teacher attaches to an assignment; Run puts it next to the student's program. */
+export interface DataFile {
+  id: string;
+  name: string;
+  content: string;
+  updatedAt: string;
+}

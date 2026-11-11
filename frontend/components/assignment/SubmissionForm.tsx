@@ -8,11 +8,13 @@ import { IconArrowsMaximize, IconArrowsMinimize, IconPlayerPlay } from "@tabler/
 
 import { CodeEditor } from "@/components/assignment/CodeEditor";
 import { CodeOutputPanel } from "@/components/assignment/CodeOutputPanel";
+import { RunInputPanel } from "@/components/assignment/RunInputPanel";
 import { FileList, FilePickButton } from "@/components/file/FileList";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { useRunCode } from "@/hooks/useCodeRun";
+import { useStudentDataFiles } from "@/hooks/useDataFiles";
 import { useDeleteDraftFile, useDraftFiles, useRefreshFilesAfterSubmit, useUploadDraftFile, useUploadsEnabled } from "@/hooks/useFiles";
 import { useSubmitAssignment } from "@/hooks/useSubmissions";
 import type { CodeRunResult } from "@/types/codeRun";
@@ -70,6 +72,8 @@ export function SubmissionForm({
 }: SubmissionFormProps) {
   const submitAssignment = useSubmitAssignment(assignmentId);
   const runCode = useRunCode(assignmentId);
+  const dataFiles = useStudentDataFiles(assignmentId);
+  const [stdin, setStdin] = useState("");
   const drafts = useDraftFiles(assignmentId);
   const uploadDraft = useUploadDraftFile(assignmentId);
   const deleteDraft = useDeleteDraftFile(assignmentId);
@@ -135,7 +139,7 @@ export function SubmissionForm({
   function handleRun() {
     if (isDemo || runCode.isPending || !content?.trim()) return;
     setRunResult(null);
-    runCode.mutate(content, { onSuccess: setRunResult });
+    runCode.mutate({ code: content, stdin }, { onSuccess: setRunResult });
   }
 
   const runButton = (
@@ -153,6 +157,7 @@ export function SubmissionForm({
       {submitAssignment.isPending ? "Submitting..." : submitLabel}
     </Button>
   );
+  const runInput = <RunInputPanel stdin={stdin} onStdinChange={setStdin} dataFiles={dataFiles.data} />;
   const output = (
     <>
       {isDemo ? <DemoDisabledNote feature="Running code" /> : null}
@@ -227,6 +232,7 @@ export function SubmissionForm({
                 </p>
               </div>
             ) : null}
+            {runInput}
             {output}
           </aside>
         ) : null}
@@ -234,6 +240,7 @@ export function SubmissionForm({
 
       {!fullScreen ? (
         <>
+          {runInput}
           {uploadsEnabled || (drafts.data?.length ?? 0) > 0 ? (
             <div className="flex flex-col gap-2">
               <Label>Files (optional)</Label>

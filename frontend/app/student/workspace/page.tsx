@@ -5,6 +5,7 @@ import { IconFileCode, IconPlayerPlay, IconPlus, IconTrash } from "@tabler/icons
 
 import { CodeEditor } from "@/components/assignment/CodeEditor";
 import { CodeOutputPanel } from "@/components/assignment/CodeOutputPanel";
+import { RunInputPanel } from "@/components/assignment/RunInputPanel";
 import { DemoDisabledNote } from "@/components/layout/DemoDisabledNote";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -119,6 +120,7 @@ function FileEditor({ file, onDelete }: { file: PracticeFile; onDelete: () => vo
   const [name, setName] = useState(file.name);
   const [content, setContent] = useState(file.content);
   const [result, setResult] = useState<CodeRunResult | null>(null);
+  const [stdin, setStdin] = useState("");
   const [dirty, setDirty] = useState(false);
   const saveFile = save.mutate;
 
@@ -134,7 +136,7 @@ function FileEditor({ file, onDelete }: { file: PracticeFile; onDelete: () => vo
   function handleRun() {
     if (isDemo || run.isPending || !content.trim()) return;
     setResult(null);
-    run.mutate(content, { onSuccess: setResult });
+    run.mutate({ code: content, stdin }, { onSuccess: setResult });
   }
 
   const status = save.isPending ? "Saving..." : dirty ? "Unsaved" : `Saved ${timeAgo(file.updatedAt)}`;
@@ -186,6 +188,8 @@ function FileEditor({ file, onDelete }: { file: PracticeFile; onDelete: () => vo
         }}
         height="min(60vh, 34rem)"
       />
+
+      <RunInputPanel stdin={stdin} onStdinChange={setStdin} />
 
       {isDemo ? <DemoDisabledNote feature="Running code" /> : null}
       {save.isError ? <p className="text-xs text-destructive">{errorMessage(save.error)}</p> : null}
