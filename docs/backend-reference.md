@@ -448,6 +448,27 @@ per thread, no names). Tutors (non-archived courses they own): `SUBMISSION` (ass
 in, quizzes finished), `JOINED` and `DISCUSSION` (new student threads and posts). An item is unread
 when its `at` is after `notifications_seen_at`.
 
+## `file` — uploaded files
+
+### `FileController`
+`POST /api/courses/{courseId}/materials/file` (TUTOR, multipart `file`, `title`, `description`,
+`topicId`) creates a `FILE` material with its file. `POST /api/student/assignments/{id}/files`
+(STUDENT, multipart `file`) adds a draft for the student's next submission; `GET` on the same path
+lists them. `GET /api/submissions/{id}/files` (the submission's student or the course's tutor).
+`GET /api/files/{id}/link` returns `{url}`, valid for 10 minutes (404 for anyone who can't see the
+file). `DELETE /api/files/{id}` removes a student's own draft (409 for submitted files and
+materials). `GET /api/files/enabled` tells the UI whether storage is configured. `GET
+/api/files/local` is public and only works with local-disk storage: the signed, expiring link
+stands in for an S3 presigned URL.
+
+### `FileService` / `FileStorage`
+Limits: 10 MB a file, 200 MB per uploader (`files.quota-bytes`), 10 drafts per assignment.
+Students can only upload to assignments that have opened and still accept submissions.
+`SubmissionService.submitAssignment` moves the student's drafts onto the new submission, and
+accepts blank code when there are drafts. `FileStorage` is `S3FileStorage` (`S3_BUCKET` set),
+`LocalFileStorage` (`FILES_LOCAL_DIR` set) or off. Object keys are `files/<uuid>`; file names are
+cleaned to their last path segment and only used in `Content-Disposition`.
+
 ## `common` — cross-cutting concerns shared by every feature package
 
 ### `ApiResponse<T>`

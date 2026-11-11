@@ -8,10 +8,12 @@ import { IconArrowsMaximize, IconArrowsMinimize, IconPlayerPlay } from "@tabler/
 
 import { CodeEditor } from "@/components/assignment/CodeEditor";
 import { CodeOutputPanel } from "@/components/assignment/CodeOutputPanel";
+import { FileList, FilePickButton } from "@/components/file/FileList";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { useRunCode } from "@/hooks/useCodeRun";
+import { useDeleteDraftFile, useDraftFiles, useRefreshFilesAfterSubmit, useUploadDraftFile, useUploadsEnabled } from "@/hooks/useFiles";
 import { useSubmitAssignment } from "@/hooks/useSubmissions";
 import type { CodeRunResult } from "@/types/codeRun";
 import { DemoDisabledNote } from "@/components/layout/DemoDisabledNote";
@@ -20,7 +22,8 @@ import { errorMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const submissionSchema = z.object({
-  content: z.string().min(1, "Write your code before submitting"),
+  // May be empty when files are attached (checked in onSubmit).
+  content: z.string(),
 });
 
 type SubmissionValues = z.infer<typeof submissionSchema>;
@@ -67,6 +70,12 @@ export function SubmissionForm({
 }: SubmissionFormProps) {
   const submitAssignment = useSubmitAssignment(assignmentId);
   const runCode = useRunCode(assignmentId);
+  const drafts = useDraftFiles(assignmentId);
+  const uploadDraft = useUploadDraftFile(assignmentId);
+  const deleteDraft = useDeleteDraftFile(assignmentId);
+  const refreshFiles = useRefreshFilesAfterSubmit(assignmentId);
+  const uploadsEnabled = useUploadsEnabled();
+  const [contentError, setContentError] = useState<string | null>(null);
   const isDemo = useIsDemo();
   const [runResult, setRunResult] = useState<CodeRunResult | null>(null);
   const [fullScreen, setFullScreen] = useState(false);
@@ -108,8 +117,14 @@ export function SubmissionForm({
   }, [fullScreen]);
 
   function onSubmit(values: SubmissionValues) {
+    if (!values.content.trim() && (drafts.data?.length ?? 0) === 0) {
+      setContentError("Write your code or attach a file before submitting");
+      return;
+    }
+    setContentError(null);
     submitAssignment.mutate(values.content, {
       onSuccess: () => {
+        refreshFiles();
         writeDraft(assignmentId, null);
         setFullScreen(false);
         onSubmitted?.();
@@ -199,6 +214,7 @@ export function SubmissionForm({
             )}
           />
           {errors.content ? <p className="text-xs text-destructive">{errors.content.message}</p> : null}
+          {contentError ? <p className="text-xs text-destructive">{contentError}</p> : null}
         </div>
 
         {fullScreen ? (
@@ -218,6 +234,23 @@ export function SubmissionForm({
 
       {!fullScreen ? (
         <>
+          {uploadsEnabled || (drafts.data?.length ?? 0) > 0 ? (
+            <div className="flex flex-col gap-2">
+              <Label>Files (optional)</Label>
+              <FileList
+                files={drafts.data ?? []}
+                onRemove={(id) => deleteDraft.mutate(id)}
+                removingId={deleteDraft.isPending ? deleteDraft.variables : null}
+              />
+              {isDemo ? (
+                <DemoDisabledNote feature="Attaching files" />
+              ) : (
+                <FilePickButton pending={uploadDraft.isPending} onPick={(file) => uploadDraft.mutate(file)} />
+              )}
+              {uploadDraft.isError ? <p className="text-xs text-destructive">{errorMessage(uploadDraft.error)}</p> : null}
+              <p className="text-xs text-muted-foreground">Up to 10 files, 10 MB each. They go in with this submission.</p>
+            </div>
+          ) : null}
           <div className="flex gap-2">
             {runButton}
             {submitButton}

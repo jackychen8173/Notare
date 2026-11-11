@@ -51,6 +51,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         // Calendar feeds: the secret token in the URL is the credential (calendar apps can't log in).
                         .requestMatchers(HttpMethod.GET, "/api/calendar-feeds/*").permitAll()
+                        // Local-disk file downloads (development only): signed and expiring, like an S3 presigned URL.
+                        .requestMatchers(HttpMethod.GET, "/api/files/local").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )

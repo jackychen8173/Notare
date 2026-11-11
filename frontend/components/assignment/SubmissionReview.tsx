@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { IconGitCompare } from "@tabler/icons-react";
 
+import { SubmissionFiles } from "@/components/file/FileList";
 import { LateBadge } from "@/components/assignment/AssignmentTiming";
 import { CodeReviewView } from "@/components/assignment/CodeReviewView";
 import { SageFeedbackBlock } from "@/components/sage/SageFeedbackBlock";
@@ -177,6 +178,7 @@ export function SubmissionReview({ submission, versions }: SubmissionReviewProps
           Hover a line number and press <span className="font-mono">+</span> to comment on that line. Comments reach the
           student when you release feedback.
         </p>
+        <SubmissionFiles submissionId={submission.id} />
       </div>
 
       <aside className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start">

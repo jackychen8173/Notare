@@ -42,6 +42,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
         "CODE_RUN_INTERNAL_SECRET=test-secret",
         // Tests create many accounts from one address; AuthRateLimitTest re-enables the limits.
         "rate-limit.enabled=false",
+        // Uploads go to local disk in tests (FileTest), never to a real bucket.
+        "files.local-dir=target/test-files",
 })
 @AutoConfigureMockMvc
 @Import({IntegrationTest.Containers.class, CapturingEmailSender.Config.class})

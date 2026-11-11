@@ -1,5 +1,7 @@
 package com.notare.material.dto;
 
+import com.notare.file.dto.FileResponse;
+
 import com.notare.material.Material;
 import com.notare.material.MaterialType;
 
@@ -15,9 +17,15 @@ public record MaterialResponse(
         String description,
         String url,
         MaterialType type,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        // Set for a FILE material; download it through GET /api/files/{id}/link.
+        FileResponse file
 ) {
     public static MaterialResponse from(Material material) {
+        return from(material, null);
+    }
+
+    public static MaterialResponse from(Material material, FileResponse file) {
         return new MaterialResponse(
                 material.getId(),
                 material.getCourse().getId(),
@@ -27,7 +35,8 @@ public record MaterialResponse(
                 material.getDescription(),
                 material.getUrl(),
                 material.getType(),
-                material.getCreatedAt()
+                material.getCreatedAt(),
+                file
         );
     }
 }

@@ -18,6 +18,8 @@ import com.notare.submission.dto.UpdateRubricScoresRequest;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
 import com.notare.user.UserRole;
+import com.notare.file.StoredFile;
+import com.notare.file.StoredFileRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,7 @@ public class SubmissionService {
     private final RubricCriterionRepository rubricCriterionRepository;
     private final SubmissionCriterionScoreRepository criterionScoreRepository;
     private final SubmissionLineCommentRepository lineCommentRepository;
+    private final StoredFileRepository storedFileRepository;
 
     public SubmissionService(
             SubmissionRepository submissionRepository,
@@ -50,7 +53,8 @@ public class SubmissionService {
             RubricRepository rubricRepository,
             RubricCriterionRepository rubricCriterionRepository,
             SubmissionCriterionScoreRepository criterionScoreRepository,
-            SubmissionLineCommentRepository lineCommentRepository
+            SubmissionLineCommentRepository lineCommentRepository,
+            StoredFileRepository storedFileRepository
     ) {
         this.submissionRepository = submissionRepository;
         this.assignmentRepository = assignmentRepository;
@@ -60,6 +64,7 @@ public class SubmissionService {
         this.rubricCriterionRepository = rubricCriterionRepository;
         this.criterionScoreRepository = criterionScoreRepository;
         this.lineCommentRepository = lineCommentRepository;
+        this.storedFileRepository = storedFileRepository;
     }
 
     public SubmissionResponse submitAssignment(UUID assignmentId, SubmitAssignmentRequest request, String studentEmail) {
@@ -99,15 +104,25 @@ public class SubmissionService {
                 })
                 .orElse(1);
 
+        List<StoredFile> drafts = storedFileRepository
+                .findByAssignmentIdAndUploaderIdAndSubmissionIsNullOrderByCreatedAtAsc(assignmentId, student.getId());
+        String content = request.content() == null ? "" : request.content();
+        if (content.isBlank() && drafts.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Add your code or attach a file");
+        }
+
         Submission submission = Submission.builder()
                 .assignment(assignment)
                 .student(student)
-                .content(request.content())
+                .content(content)
                 .attemptNumber(attemptNumber)
                 .feedbackStatus(FeedbackStatus.PENDING)
                 .build();
 
         submissionRepository.save(submission);
+        // The student's attached files become part of this version.
+        drafts.forEach(file -> file.setSubmission(submission));
+        storedFileRepository.saveAll(drafts);
 
         return SubmissionResponse.from(submission, List.of());
     }

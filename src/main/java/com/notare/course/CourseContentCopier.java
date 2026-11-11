@@ -92,6 +92,10 @@ public class CourseContentCopier {
         }
 
         for (Material material : materialRepository.findByCourseIdOrderByCreatedAtDesc(source.getId())) {
+            // Uploaded files aren't copied yet (the copy would be an empty material): re-upload them.
+            if (material.getType() == com.notare.material.MaterialType.FILE) {
+                continue;
+            }
             materialRepository.save(Material.builder()
                     .course(target)
                     .topic(mapTopic(topics, material.getTopic()))

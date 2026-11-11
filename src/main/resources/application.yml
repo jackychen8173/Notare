@@ -19,6 +19,11 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      # One file per upload, capped by files.max-bytes (10 MB); a little headroom for the form fields.
+      max-file-size: 10MB
+      max-request-size: 11MB
 
 server:
   port: ${PORT:8080}
@@ -29,6 +34,21 @@ server:
       # costing memory for no reason. 10 is generous headroom for current usage; raise it if
       # traffic ever actually grows enough to need it.
       max: 10
+
+# File uploads, see com.notare.file. With S3_BUCKET set, files go to that bucket (on Railway these
+# are variable references to the bucket's own credentials, so no secret is copied by hand).
+# FILES_LOCAL_DIR instead keeps them on local disk, for development and tests only. With neither,
+# uploads are turned off (503) rather than saved to a container disk that's wiped on redeploy.
+files:
+  max-bytes: 10485760
+  quota-bytes: ${FILES_QUOTA_BYTES:209715200}
+  local-dir: ${FILES_LOCAL_DIR:}
+  s3:
+    bucket: ${S3_BUCKET:}
+    endpoint: ${S3_ENDPOINT:}
+    region: ${S3_REGION:auto}
+    access-key-id: ${S3_ACCESS_KEY_ID:}
+    secret-access-key: ${S3_SECRET_ACCESS_KEY:}
 
 jwt:
   secret: ${JWT_SECRET}

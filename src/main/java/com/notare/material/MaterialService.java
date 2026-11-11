@@ -5,6 +5,9 @@ import com.notare.course.CourseRepository;
 import com.notare.course.EnrollmentRepository;
 import com.notare.material.dto.CreateMaterialRequest;
 import com.notare.material.dto.MaterialResponse;
+import com.notare.file.FileService;
+import com.notare.file.StoredFileRepository;
+import com.notare.file.dto.FileResponse;
 import com.notare.topic.Topic;
 import com.notare.topic.TopicRepository;
 import com.notare.user.User;
@@ -16,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -27,14 +32,20 @@ public class MaterialService {
     private final TopicRepository topicRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
+    private final FileService fileService;
+    private final StoredFileRepository storedFileRepository;
 
     public MaterialService(
             MaterialRepository materialRepository,
             CourseRepository courseRepository,
             TopicRepository topicRepository,
             EnrollmentRepository enrollmentRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            FileService fileService,
+            StoredFileRepository storedFileRepository
     ) {
+        this.fileService = fileService;
+        this.storedFileRepository = storedFileRepository;
         this.materialRepository = materialRepository;
         this.courseRepository = courseRepository;
         this.topicRepository = topicRepository;
@@ -56,6 +67,10 @@ public class MaterialService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found"));
         }
 
+        if (request.type() == MaterialType.FILE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Upload files through /materials/file");
+        }
+
         Material material = Material.builder()
                 .course(course)
                 .topic(topic)
@@ -73,22 +88,26 @@ public class MaterialService {
     @Transactional(readOnly = true)
     public List<MaterialResponse> listMaterials(UUID courseId, String tutorEmail) {
         Course course = requireOwnedCourse(courseId, tutorEmail);
-        return materialRepository.findByCourseIdOrderByCreatedAtDesc(course.getId()).stream()
-                .map(MaterialResponse::from)
-                .toList();
+        return withFiles(materialRepository.findByCourseIdOrderByCreatedAtDesc(course.getId()));
     }
 
     @Transactional(readOnly = true)
     public List<MaterialResponse> listMaterialsForEnrolledCourse(UUID courseId, String studentEmail) {
         Course course = requireEnrolledCourse(courseId, studentEmail);
-        return materialRepository.findByCourseIdOrderByCreatedAtDesc(course.getId()).stream()
-                .map(MaterialResponse::from)
-                .toList();
+        return withFiles(materialRepository.findByCourseIdOrderByCreatedAtDesc(course.getId()));
     }
 
     public void deleteMaterial(UUID materialId, String tutorEmail) {
         Material material = requireOwnedMaterial(materialId, tutorEmail);
+        fileService.deleteForMaterial(material);
         materialRepository.delete(material);
+    }
+
+    private List<MaterialResponse> withFiles(List<Material> materials) {
+        Map<UUID, FileResponse> files = storedFileRepository.findByMaterialIdIn(materials.stream().map(Material::getId).toList())
+                .stream()
+                .collect(Collectors.toMap(file -> file.getMaterial().getId(), FileResponse::from, (a, b) -> a));
+        return materials.stream().map(material -> MaterialResponse.from(material, files.get(material.getId()))).toList();
     }
 
     private User requireTutor(String email) {
