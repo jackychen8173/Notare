@@ -7,6 +7,7 @@ import { IconGitCompare } from "@tabler/icons-react";
 import { SubmissionFiles } from "@/components/file/FileList";
 import { LateBadge } from "@/components/assignment/AssignmentTiming";
 import { CodeReviewView } from "@/components/assignment/CodeReviewView";
+import { SubmissionTestsCard } from "@/components/assignment/SubmissionTestsCard";
 import { SageFeedbackBlock } from "@/components/sage/SageFeedbackBlock";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -210,6 +211,11 @@ export function SubmissionReview({ submission, versions }: SubmissionReviewProps
             ) : null}
           </div>
         )}
+
+        <SubmissionTestsCard
+          submission={submission}
+          onUseScore={scored ? (value) => setPoints(String(value)) : undefined}
+        />
 
         <RubricScoring key={submission.id} submission={submission} />
 

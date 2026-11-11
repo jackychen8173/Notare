@@ -10,6 +10,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { AssignmentFormDialog } from "@/components/assignment/AssignmentFormDialog";
 import { AssignmentSettingsCard } from "@/components/assignment/AssignmentSettingsCard";
 import { DataFilesPanel } from "@/components/assignment/DataFilesPanel";
+import { TestsPanel } from "@/components/assignment/TestsPanel";
 import { AssignmentTiming, LateBadge } from "@/components/assignment/AssignmentTiming";
 import { Button } from "@/components/ui/button";
 import { RubricPanel } from "@/components/rubric/RubricPanel";
@@ -85,6 +86,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       <AssignmentSettingsCard assignment={assignment.data} />
 
       <DataFilesPanel assignmentId={assignment.data.id} />
+
+      <TestsPanel assignmentId={assignment.data.id} />
 
       <div>
         <h2 className="mb-3 text-lg font-semibold text-foreground">Submissions</h2>

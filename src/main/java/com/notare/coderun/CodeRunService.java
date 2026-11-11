@@ -9,11 +9,8 @@ import com.notare.course.EnrollmentRepository;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
 import com.notare.user.UserRole;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -22,27 +19,24 @@ import java.util.UUID;
 @Service
 public class CodeRunService {
 
-    private final RestClient codeRunRestClient;
+    private final SandboxClient sandboxClient;
     private final AssignmentRepository assignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
     private final DataFileService dataFileService;
-    private final String internalSecret;
 
     public CodeRunService(
-            RestClient codeRunRestClient,
+            SandboxClient sandboxClient,
             AssignmentRepository assignmentRepository,
             EnrollmentRepository enrollmentRepository,
             UserRepository userRepository,
-            DataFileService dataFileService,
-            @Value("${code-run.internal-secret}") String internalSecret
+            DataFileService dataFileService
     ) {
-        this.codeRunRestClient = codeRunRestClient;
+        this.sandboxClient = sandboxClient;
         this.assignmentRepository = assignmentRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
         this.dataFileService = dataFileService;
-        this.internalSecret = internalSecret;
     }
 
     // Same requireStudent + enrollment check as SubmissionService.submitAssignment - duplicated
@@ -65,35 +59,18 @@ public class CodeRunService {
         }
 
         // The assignment's data files come from the database, never from the request.
-        return execute(new SandboxRunRequest(request.code(), stdinOf(request),
+        return sandboxClient.run(SandboxRunRequest.single(request.code(), stdinOf(request),
                 dataFileService.filesForRun(assignment.getId())));
     }
 
     /** Workspace practice code: any student may run it, since it isn't tied to a course. */
     public CodeRunResponse runPractice(RunCodeRequest request, String studentEmail) {
         requireStudent(studentEmail);
-        return execute(new SandboxRunRequest(request.code(), stdinOf(request), List.of()));
+        return sandboxClient.run(SandboxRunRequest.single(request.code(), stdinOf(request), List.of()));
     }
 
     private static String stdinOf(RunCodeRequest request) {
         return request.stdin() == null ? "" : request.stdin();
-    }
-
-    private CodeRunResponse execute(SandboxRunRequest request) {
-        try {
-            CodeRunResponse response = codeRunRestClient.post()
-                    .uri("/api/code-run")
-                    .header("X-Internal-Secret", internalSecret)
-                    .body(request)
-                    .retrieve()
-                    .body(CodeRunResponse.class);
-            if (response == null) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Code execution service returned no response");
-            }
-            return response;
-        } catch (RestClientException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to run code", e);
-        }
     }
 
     private User requireStudent(String email) {

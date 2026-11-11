@@ -25,7 +25,9 @@ public class DemoRestrictionInterceptor implements HandlerInterceptor {
 
     static final List<String> PAID_ENDPOINTS = List.of("/api/sage/**", "/api/assignments/*/run", "/api/student/workspace/run",
             // Uploads cost storage, and demo accounts are free and never cleaned up.
-            "/api/courses/*/materials/file", "/api/student/assignments/*/files");
+            "/api/courses/*/materials/file", "/api/student/assignments/*/files",
+            // Running tests uses the code sandbox, same as Run.
+            "/api/assignments/*/check", "/api/submissions/*/run-tests");
 
     private static final List<String> PAID_GET_ENDPOINTS = List.of("/api/sage/student-progress/*");
 

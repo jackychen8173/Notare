@@ -1,20 +1,14 @@
 package com.notare.coderun;
 
 import com.notare.assignment.Assignment;
-import com.notare.assignment.AssignmentRepository;
 import com.notare.coderun.dto.DataFileRequest;
 import com.notare.coderun.dto.DataFileResponse;
 import com.notare.coderun.dto.SandboxRunRequest;
-import com.notare.course.EnrollmentRepository;
-import com.notare.user.User;
-import com.notare.user.UserRepository;
-import com.notare.user.UserRole;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -31,36 +25,27 @@ public class DataFileService {
     static final int MAX_FILES_PER_ASSIGNMENT = 5;
 
     private final AssignmentDataFileRepository dataFileRepository;
-    private final AssignmentRepository assignmentRepository;
-    private final EnrollmentRepository enrollmentRepository;
-    private final UserRepository userRepository;
+    private final AssignmentAccess access;
 
-    public DataFileService(
-            AssignmentDataFileRepository dataFileRepository,
-            AssignmentRepository assignmentRepository,
-            EnrollmentRepository enrollmentRepository,
-            UserRepository userRepository
-    ) {
+    public DataFileService(AssignmentDataFileRepository dataFileRepository, AssignmentAccess access) {
         this.dataFileRepository = dataFileRepository;
-        this.assignmentRepository = assignmentRepository;
-        this.enrollmentRepository = enrollmentRepository;
-        this.userRepository = userRepository;
+        this.access = access;
     }
 
     @Transactional(readOnly = true)
     public List<DataFileResponse> listForTutor(UUID assignmentId, String tutorEmail) {
-        Assignment assignment = requireOwnedAssignment(assignmentId, tutorEmail);
+        Assignment assignment = access.requireOwned(assignmentId, tutorEmail);
         return list(assignment);
     }
 
     @Transactional(readOnly = true)
     public List<DataFileResponse> listForStudent(UUID assignmentId, String studentEmail) {
-        Assignment assignment = requireVisibleAssignment(assignmentId, studentEmail);
+        Assignment assignment = access.requireVisibleToStudent(assignmentId, studentEmail);
         return list(assignment);
     }
 
     public DataFileResponse create(UUID assignmentId, DataFileRequest request, String tutorEmail) {
-        Assignment assignment = requireEditableAssignment(assignmentId, tutorEmail);
+        Assignment assignment = access.requireEditable(assignmentId, tutorEmail);
         String name = validName(request.name());
         if (dataFileRepository.countByAssignmentId(assignment.getId()) >= MAX_FILES_PER_ASSIGNMENT) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -78,7 +63,7 @@ public class DataFileService {
     }
 
     public DataFileResponse update(UUID assignmentId, UUID fileId, DataFileRequest request, String tutorEmail) {
-        Assignment assignment = requireEditableAssignment(assignmentId, tutorEmail);
+        Assignment assignment = access.requireEditable(assignmentId, tutorEmail);
         AssignmentDataFile file = requireFile(assignment, fileId);
         String name = validName(request.name());
         if (!name.equals(file.getName()) && dataFileRepository.existsByAssignmentIdAndName(assignment.getId(), name)) {
@@ -90,7 +75,7 @@ public class DataFileService {
     }
 
     public void delete(UUID assignmentId, UUID fileId, String tutorEmail) {
-        Assignment assignment = requireEditableAssignment(assignmentId, tutorEmail);
+        Assignment assignment = access.requireEditable(assignmentId, tutorEmail);
         dataFileRepository.delete(requireFile(assignment, fileId));
     }
 
@@ -123,34 +108,5 @@ public class DataFileService {
         return dataFileRepository.findById(fileId)
                 .filter(file -> file.getAssignment().getId().equals(assignment.getId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Data file not found"));
-    }
-
-    private Assignment requireEditableAssignment(UUID assignmentId, String tutorEmail) {
-        Assignment assignment = requireOwnedAssignment(assignmentId, tutorEmail);
-        if (assignment.getCourse().getArchivedAt() != null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot edit assignments in an archived course");
-        }
-        return assignment;
-    }
-
-    private Assignment requireOwnedAssignment(UUID assignmentId, String tutorEmail) {
-        User tutor = userRepository.findByEmail(tutorEmail)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
-        return assignmentRepository.findById(assignmentId)
-                // 404, not 403 - avoid confirming another tutor's assignment exists
-                .filter(assignment -> assignment.getCourse().getTutor().getId().equals(tutor.getId()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
-    }
-
-    private Assignment requireVisibleAssignment(UUID assignmentId, String studentEmail) {
-        User student = userRepository.findByEmail(studentEmail)
-                .filter(user -> user.getRole() == UserRole.STUDENT)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
-        return assignmentRepository.findById(assignmentId)
-                // 404 before it opens or when not enrolled, like the assignment itself
-                .filter(assignment -> enrollmentRepository.existsByStudentIdAndCourseId(
-                        student.getId(), assignment.getCourse().getId()))
-                .filter(assignment -> assignment.isVisibleToStudents(Instant.now()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
     }
 }
