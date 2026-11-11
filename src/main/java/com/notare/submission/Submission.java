@@ -78,6 +78,17 @@ public class Submission {
     @Column(name = "released_at")
     private LocalDateTime releasedAt;
 
+    /**
+     * The latest run of the assignment's tests on this version (JSON, see
+     * com.notare.coderun.TestService). Tutor-only, never in a student response: it suggests a
+     * score, and the student sees the score only once the tutor releases it.
+     */
+    @Column(name = "test_results", columnDefinition = "TEXT")
+    private String testResults;
+
+    @Column(name = "tests_run_at")
+    private LocalDateTime testsRunAt;
+
     /** submittedAt is written in the JVM's zone (see onCreate); this is the moment it means. */
     public Instant submittedInstant() {
         return submittedAt.atZone(ZoneId.systemDefault()).toInstant();

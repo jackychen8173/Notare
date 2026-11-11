@@ -4,20 +4,22 @@ import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-import { IconArrowsMaximize, IconArrowsMinimize, IconPlayerPlay } from "@tabler/icons-react";
+import { IconArrowsMaximize, IconArrowsMinimize, IconChecklist, IconPlayerPlay } from "@tabler/icons-react";
 
 import { CodeEditor } from "@/components/assignment/CodeEditor";
 import { CodeOutputPanel } from "@/components/assignment/CodeOutputPanel";
 import { RunInputPanel } from "@/components/assignment/RunInputPanel";
+import { TestResultsList } from "@/components/assignment/TestResultsList";
 import { FileList, FilePickButton } from "@/components/file/FileList";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Label } from "@/components/ui/label";
 import { useRunCode } from "@/hooks/useCodeRun";
 import { useStudentDataFiles } from "@/hooks/useDataFiles";
+import { useCheckCode, useStudentTests } from "@/hooks/useAssignmentTests";
 import { useDeleteDraftFile, useDraftFiles, useRefreshFilesAfterSubmit, useUploadDraftFile, useUploadsEnabled } from "@/hooks/useFiles";
 import { useSubmitAssignment } from "@/hooks/useSubmissions";
-import type { CodeRunResult } from "@/types/codeRun";
+import type { CodeRunResult, TestRunResult } from "@/types/codeRun";
 import { DemoDisabledNote } from "@/components/layout/DemoDisabledNote";
 import { useIsDemo } from "@/hooks/useIsDemo";
 import { errorMessage } from "@/lib/api";
@@ -74,6 +76,10 @@ export function SubmissionForm({
   const runCode = useRunCode(assignmentId);
   const dataFiles = useStudentDataFiles(assignmentId);
   const [stdin, setStdin] = useState("");
+  const tests = useStudentTests(assignmentId);
+  const checkCode = useCheckCode(assignmentId);
+  const [checkResult, setCheckResult] = useState<TestRunResult | null>(null);
+  const hasTests = (tests.data?.length ?? 0) > 0;
   const drafts = useDraftFiles(assignmentId);
   const uploadDraft = useUploadDraftFile(assignmentId);
   const deleteDraft = useDeleteDraftFile(assignmentId);
@@ -152,6 +158,18 @@ export function SubmissionForm({
       </span>
     </Button>
   );
+  function handleCheck() {
+    if (isDemo || checkCode.isPending || !content?.trim()) return;
+    setCheckResult(null);
+    checkCode.mutate(content, { onSuccess: setCheckResult });
+  }
+
+  const checkButton = hasTests ? (
+    <Button type="button" variant="outline" disabled={isDemo || checkCode.isPending || !content?.trim()} onClick={handleCheck}>
+      <IconChecklist />
+      {checkCode.isPending ? "Checking..." : `Check (${tests.data?.length} ${tests.data?.length === 1 ? "test" : "tests"})`}
+    </Button>
+  ) : null;
   const submitButton = (
     <Button type="submit" disabled={submitAssignment.isPending}>
       {submitAssignment.isPending ? "Submitting..." : submitLabel}
@@ -163,6 +181,8 @@ export function SubmissionForm({
       {isDemo ? <DemoDisabledNote feature="Running code" /> : null}
       {runCode.isError ? <p className="text-sm text-destructive">{errorMessage(runCode.error)}</p> : null}
       {runResult ? <CodeOutputPanel result={runResult} /> : null}
+      {checkCode.isError ? <p className="text-sm text-destructive">{errorMessage(checkCode.error)}</p> : null}
+      {checkResult ? <TestResultsList run={checkResult} /> : null}
       {submitAssignment.isError ? (
         <p className="text-sm text-destructive">{errorMessage(submitAssignment.error)}</p>
       ) : null}
@@ -189,6 +209,7 @@ export function SubmissionForm({
             {instructions?.title ?? "Your code"}
           </p>
           {runButton}
+          {checkButton}
           {submitButton}
           <Button type="button" variant="ghost" onClick={() => setFullScreen(false)}>
             <IconArrowsMinimize /> Exit <Kbd>Esc</Kbd>
@@ -258,8 +279,9 @@ export function SubmissionForm({
               <p className="text-xs text-muted-foreground">Up to 10 files, 10 MB each. They go in with this submission.</p>
             </div>
           ) : null}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {runButton}
+            {checkButton}
             {submitButton}
             {onCancel ? (
               <Button type="button" variant="ghost" onClick={onCancel}>
