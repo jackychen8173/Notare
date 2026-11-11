@@ -15,6 +15,7 @@ import { CourseBanner } from "@/components/course/CourseBanner";
 import { CourseColorPicker } from "@/components/course/CourseColorPicker";
 import { CourseScheduleFields } from "@/components/course/CourseScheduleFields";
 import { CourseTabs, useCourseTab, type CourseTab } from "@/components/course/CourseTabs";
+import { Gradebook } from "@/components/gradebook/Gradebook";
 import { GradeCategoriesManager } from "@/components/course/GradeCategoriesManager";
 import { MaterialsSection } from "@/components/course/MaterialsSection";
 import { TimeZoneField } from "@/components/course/TimeZoneField";
@@ -511,6 +512,7 @@ const TABS: CourseTab[] = [
   { id: "stream", label: "Stream" },
   { id: "classwork", label: "Classwork" },
   { id: "progress", label: "Progress" },
+  { id: "grades", label: "Grades" },
   { id: "people", label: "People" },
   { id: "discussions", label: "Discussions" },
   { id: "settings", label: "Settings" },
@@ -606,6 +608,8 @@ function CourseDetail({ id }: { id: string }) {
       ) : null}
 
       {tab === "progress" ? <ClassUnitProgress courseId={id} /> : null}
+
+      {tab === "grades" ? <Gradebook courseId={id} courseName={course.data.name} /> : null}
 
       {tab === "people" ? <PeopleTab courseId={id} /> : null}
 
