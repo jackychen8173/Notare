@@ -65,6 +65,15 @@ public class User {
     @Column(name = "calendar_token", unique = true, length = 64)
     private String calendarToken;
 
+    // Notifications newer than this are unread; null means never opened (com.notare.notification).
+    @Column(name = "notifications_seen_at")
+    private java.time.Instant notificationsSeenAt;
+
+    // Comma-separated NotificationKind names this person turned off.
+    @Builder.Default
+    @Column(name = "muted_notifications", nullable = false)
+    private String mutedNotifications = "";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -419,9 +419,14 @@ class DemoSeeder {
     }
 
     private Assignment assignment(Course course, Topic topic, String title, String description, LocalDate dueDate) {
+        java.time.Instant dueAt = dueDate.atTime(AssignmentService.DEFAULT_DUE_TIME).atZone(course.zone()).toInstant();
+        // Posted a week before it's due (or a few hours ago), so the demo's notifications read like a real class.
+        java.time.Instant posted = dueAt.minus(java.time.Duration.ofDays(7));
+        java.time.Instant recent = java.time.Instant.now().minus(java.time.Duration.ofHours(3));
         return assignmentRepository.save(Assignment.builder()
                 .course(course).topic(topic).title(title).description(description)
-                .dueAt(dueDate.atTime(AssignmentService.DEFAULT_DUE_TIME).atZone(course.zone()).toInstant())
+                .dueAt(dueAt)
+                .createdAt(posted.isBefore(recent) ? posted : recent)
                 .pointsPossible(DEMO_POINTS)
                 .latePenaltyPercent(DEMO_LATE_PENALTY_PERCENT)
                 .build());

@@ -98,7 +98,12 @@ export function AppShell({ role, navItems, courses, profileHref, children }: App
 
       <div className="flex min-w-0 flex-1 flex-col">
         <DemoBanner />
-        <TopNav profileHref={profileHref} onOpenMenu={() => setMenuOpen(true)} onOpenSearch={() => setSearchOpen(true)} />
+        <TopNav
+          profileHref={profileHref}
+          onOpenMenu={() => setMenuOpen(true)}
+          onOpenSearch={() => setSearchOpen(true)}
+          showNotifications={role !== "admin"}
+        />
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 pt-5 pb-24 sm:px-6 md:pb-6 lg:px-8 lg:py-6">{children}</main>
         <StatusBar role={role} onOpenShortcuts={() => setShortcutsOpen(true)} />
       </div>

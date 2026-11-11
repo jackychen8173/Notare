@@ -3,6 +3,7 @@
 import { IconMenu2, IconSearch } from "@tabler/icons-react";
 
 import { AccountMenu } from "@/components/layout/AccountMenu";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { BrandMark } from "@/components/layout/Sidebar";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,11 @@ interface TopNavProps {
   profileHref: string;
   onOpenMenu: () => void;
   onOpenSearch: () => void;
+  /** Tutors and students get the notification bell; admins don't. */
+  showNotifications?: boolean;
 }
 
-export function TopNav({ profileHref, onOpenMenu, onOpenSearch }: TopNavProps) {
+export function TopNav({ profileHref, onOpenMenu, onOpenSearch, showNotifications = false }: TopNavProps) {
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
       <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open menu" onClick={onOpenMenu}>
@@ -39,6 +42,7 @@ export function TopNav({ profileHref, onOpenMenu, onOpenSearch }: TopNavProps) {
         <Button variant="ghost" size="icon" className="md:hidden" aria-label="Search" onClick={onOpenSearch}>
           <IconSearch className="size-5" stroke={1.75} />
         </Button>
+        {showNotifications ? <NotificationBell /> : null}
         <ThemeToggle />
         <AccountMenu profileHref={profileHref} />
       </div>
