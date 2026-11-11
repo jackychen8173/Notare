@@ -1,13 +1,16 @@
 package com.notare.sage.chat;
 
 import com.anthropic.client.AnthropicClient;
+import com.anthropic.core.JsonValue;
+import com.anthropic.models.messages.CacheControlEphemeral;
 import com.anthropic.models.messages.ContentBlock;
 import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.MessageParam;
-import com.anthropic.models.messages.Model;
+import com.anthropic.models.messages.OutputConfig;
 import com.anthropic.models.messages.ToolUnion;
 import com.anthropic.models.messages.ToolUseBlock;
+import com.notare.sage.SageModels;
 import com.notare.sage.chat.block.BlockConverter;
 import com.notare.sage.chat.block.StoredBlock;
 import com.notare.sage.chat.dto.ChatTurnResponse;
@@ -43,8 +46,25 @@ import java.util.UUID;
 @Service
 public class SageChatService {
 
-    private static final Model MODEL = Model.CLAUDE_SONNET_4_6;
     private static final int MAX_TOOL_ROUNDTRIPS = 6;
+    // Room for thinking as well as the reply: thinking counts toward max_tokens on this model.
+    private static final long MAX_TOKENS = 16000L;
+
+    /**
+     * Adaptive thinking, with thinking blocks dropped (not a 400) if the stored history ever stops
+     * matching what produced them. The history is append-only, so that shouldn't happen; when it
+     * does, SageModels.logDroppedThinking says so.
+     */
+    private static final JsonValue THINKING = JsonValue.from(Map.of(
+            "type", "adaptive",
+            "block_binding", Map.of("prefix_mismatch_behavior", "drop_block")));
+
+    static final String REFUSAL_REPLY =
+            "I can't help with that one. Try asking a different way, or do it yourself from the page.";
+
+    static final String SECOND_WRITE_NOT_RUN =
+            "Not run: only one action can be confirmed at a time. Ask for this one again on its own "
+                    + "if it's still needed.";
 
     private static final String CHAT_SYSTEM_PROMPT = """
             You are Sage, an AI assistant embedded in a tutoring platform, talking directly with a \
@@ -117,8 +137,8 @@ public class SageChatService {
         pendingMessage.setActionStatus(ActionStatus.CONFIRMED);
         messageRepository.save(pendingMessage);
 
-        appendMessage(conversation, MessageRole.TOOL,
-                List.of(new StoredBlock.ToolResult(action.toolUseId(), resultJson, isError)), null, null);
+        appendMessage(conversation, MessageRole.TOOL, resultsForTurn(pendingMessage,
+                new StoredBlock.ToolResult(action.toolUseId(), resultJson, isError), tutor), null, null);
 
         List<SageMessage> newMessages = runLoop(conversation, tutor, 0);
         return toChatTurnResponse(conversation.getId(), newMessages);
@@ -133,8 +153,8 @@ public class SageChatService {
         pendingMessage.setActionStatus(ActionStatus.DECLINED);
         messageRepository.save(pendingMessage);
 
-        appendMessage(conversation, MessageRole.TOOL,
-                List.of(new StoredBlock.ToolResult(action.toolUseId(), "The tutor declined this action.", false)),
+        appendMessage(conversation, MessageRole.TOOL, resultsForTurn(pendingMessage,
+                new StoredBlock.ToolResult(action.toolUseId(), "The tutor declined this action.", false), tutor),
                 null, null);
 
         List<SageMessage> newMessages = runLoop(conversation, tutor, 0);
@@ -180,12 +200,21 @@ public class SageChatService {
         List<SageMessage> history = messageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
         List<MessageParam> apiHistory = buildApiHistory(history);
 
+        // The cache breakpoint sits on the last message, so each round trip of a tool loop (and the
+        // next turn, within 5 minutes) reads the tools, system prompt and history from cache.
+        // That only works because nothing before the end ever changes: see resultsForTurn.
         MessageCreateParams params = MessageCreateParams.builder()
-                .model(MODEL)
-                .maxTokens(2048L)
+                .model(SageModels.SONNET)
+                .maxTokens(MAX_TOKENS)
                 .system(CHAT_SYSTEM_PROMPT)
                 .messages(apiHistory)
                 .tools(SageToolDefinitions.ALL_TOOLS.stream().map(ToolUnion::ofTool).toList())
+                .outputConfig(OutputConfig.builder().effort(OutputConfig.Effort.MEDIUM).build())
+                .cacheControl(CacheControlEphemeral.builder().build())
+                .putAdditionalBodyProperty("thinking", THINKING)
+                .putAdditionalBodyProperty("fallbacks", SageModels.FALLBACKS_DEFAULT)
+                .putAdditionalHeader("anthropic-beta",
+                        SageModels.FALLBACK_BETA + "," + SageModels.THINKING_BINDING_BETA)
                 .build();
 
         Message response;
@@ -194,7 +223,18 @@ public class SageChatService {
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Sage is unavailable right now", e);
         }
+        SageModels.logDroppedThinking(response);
 
+        if (SageModels.isRefusal(response.stopReason())) {
+            // Don't store the refused content; answer with a plain reply so the conversation
+            // still alternates user/assistant and can carry on.
+            SageMessage refusal = appendMessage(conversation, MessageRole.ASSISTANT,
+                    List.of(new StoredBlock.Text(REFUSAL_REPLY)), null, null);
+            return List.of(refusal);
+        }
+
+        // Stored exactly as returned, thinking blocks included: the next request must send this
+        // turn back unchanged, or the model loses its reasoning and the cache misses.
         List<StoredBlock> allResponseBlocks = BlockConverter.fromApiResponse(response.content());
 
         List<ToolUseBlock> toolUses = response.content().stream()
@@ -207,21 +247,10 @@ public class SageChatService {
                 .findFirst();
 
         if (writeCall.isPresent()) {
-            // A write call pauses the loop for tutor confirmation, which would strand any
-            // sibling tool_use block in this response unresolved - the Anthropic API requires
-            // every tool_use in an assistant turn to have a matching tool_result in the
-            // immediately following turn. So when a write call is present, keep only that one
-            // ToolUse block (plus all Text blocks) and drop everything else before persisting.
+            // A write call pauses the loop for tutor confirmation. The turn is stored whole, even
+            // when it holds other tool calls: resultsForTurn answers every one of them when the
+            // tutor confirms or declines (the API needs a result for each tool_use).
             ToolUseBlock call = writeCall.get();
-            List<StoredBlock> responseBlocks = new ArrayList<>();
-            for (StoredBlock block : allResponseBlocks) {
-                if (block instanceof StoredBlock.Text) {
-                    responseBlocks.add(block);
-                } else if (block instanceof StoredBlock.ToolUse toolUse && toolUse.id().equals(call.id())) {
-                    responseBlocks.add(block);
-                }
-            }
-
             Map<String, Object> input = call._input().convert(new TypeReference<Map<String, Object>>() {
             });
 
@@ -231,14 +260,14 @@ public class SageChatService {
             } catch (ResponseStatusException e) {
                 // Never let a tool-execution error (here, describeAction's ownership/ID
                 // validation) escape the loop - it would fail the whole turn with the messages
-                // already saved but no answer. Persist the
-                // assistant message without a pending action, feed the failure back to the model
-                // as an is_error tool result, and recurse so Sage can try to recover - same
-                // pattern as the read-tool error path below.
-                SageMessage assistantMessage = appendMessage(conversation, MessageRole.ASSISTANT, responseBlocks,
+                // already saved but no answer. Persist the assistant message without a pending
+                // action, feed the failure back to the model as an is_error tool result, and
+                // recurse so Sage can try to recover - same as the read-tool error path below.
+                SageMessage assistantMessage = appendMessage(conversation, MessageRole.ASSISTANT, allResponseBlocks,
                         null, null);
                 SageMessage toolMessage = appendMessage(conversation, MessageRole.TOOL,
-                        List.of(new StoredBlock.ToolResult(call.id(), String.valueOf(e.getReason()), true)),
+                        resultsForTurn(allResponseBlocks,
+                                new StoredBlock.ToolResult(call.id(), String.valueOf(e.getReason()), true), tutor),
                         null, null);
 
                 List<SageMessage> produced = new ArrayList<>();
@@ -249,7 +278,7 @@ public class SageChatService {
             }
 
             PendingAction pendingAction = new PendingAction(call.name(), call.id(), input, description);
-            SageMessage assistantMessage = appendMessage(conversation, MessageRole.ASSISTANT, responseBlocks,
+            SageMessage assistantMessage = appendMessage(conversation, MessageRole.ASSISTANT, allResponseBlocks,
                     ActionStatus.PENDING, pendingAction);
             return List.of(assistantMessage);
         }
@@ -281,6 +310,39 @@ public class SageChatService {
         produced.add(toolMessage);
         produced.addAll(runLoop(conversation, tutor, depth + 1));
         return produced;
+    }
+
+    /**
+     * The tool results for an assistant turn that contained a write call. Every tool_use in the
+     * turn needs a result in the next message. The write call gets {@code handled}; any other read
+     * call in the turn runs now; any other write call is turned away, so only one write is ever
+     * confirmed at a time. Answering them all (instead of trimming the stored turn down to the one
+     * write) keeps the history append-only, which the model's thinking blocks require.
+     */
+    private List<StoredBlock> resultsForTurn(SageMessage assistantMessage, StoredBlock.ToolResult handled, User tutor) {
+        return resultsForTurn(BlockConverter.deserialize(assistantMessage.getContent(), objectMapper), handled, tutor);
+    }
+
+    private List<StoredBlock> resultsForTurn(List<StoredBlock> turn, StoredBlock.ToolResult handled, User tutor) {
+        List<StoredBlock> results = new ArrayList<>();
+        for (StoredBlock block : turn) {
+            if (!(block instanceof StoredBlock.ToolUse call)) {
+                continue;
+            }
+            if (call.id().equals(handled.toolUseId())) {
+                results.add(handled);
+            } else if (SageToolExecutor.WRITE_TOOL_NAMES.contains(call.name())) {
+                results.add(new StoredBlock.ToolResult(call.id(), SECOND_WRITE_NOT_RUN, true));
+            } else {
+                try {
+                    results.add(new StoredBlock.ToolResult(call.id(),
+                            toolExecutor.execute(call.name(), call.input(), tutor), false));
+                } catch (ResponseStatusException e) {
+                    results.add(new StoredBlock.ToolResult(call.id(), String.valueOf(e.getReason()), true));
+                }
+            }
+        }
+        return results;
     }
 
     private List<MessageParam> buildApiHistory(List<SageMessage> messages) {
