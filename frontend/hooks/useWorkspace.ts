@@ -52,7 +52,7 @@ export function usePracticeFileMutations() {
 
 export function useRunPractice() {
   return useMutation({
-    mutationFn: async (code: string) =>
-      (await api.post<ApiEnvelope<CodeRunResult>>("/api/student/workspace/run", { code })).data.data,
+    mutationFn: async ({ code, stdin }: { code: string; stdin: string }) =>
+      (await api.post<ApiEnvelope<CodeRunResult>>("/api/student/workspace/run", { code, stdin })).data.data,
   });
 }

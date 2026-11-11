@@ -4,6 +4,7 @@ import com.notare.assignment.Assignment;
 import com.notare.assignment.AssignmentRepository;
 import com.notare.coderun.dto.CodeRunResponse;
 import com.notare.coderun.dto.RunCodeRequest;
+import com.notare.coderun.dto.SandboxRunRequest;
 import com.notare.course.EnrollmentRepository;
 import com.notare.user.User;
 import com.notare.user.UserRepository;
@@ -15,6 +16,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -24,6 +26,7 @@ public class CodeRunService {
     private final AssignmentRepository assignmentRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final UserRepository userRepository;
+    private final DataFileService dataFileService;
     private final String internalSecret;
 
     public CodeRunService(
@@ -31,12 +34,14 @@ public class CodeRunService {
             AssignmentRepository assignmentRepository,
             EnrollmentRepository enrollmentRepository,
             UserRepository userRepository,
+            DataFileService dataFileService,
             @Value("${code-run.internal-secret}") String internalSecret
     ) {
         this.codeRunRestClient = codeRunRestClient;
         this.assignmentRepository = assignmentRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.userRepository = userRepository;
+        this.dataFileService = dataFileService;
         this.internalSecret = internalSecret;
     }
 
@@ -59,16 +64,22 @@ public class CodeRunService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
         }
 
-        return execute(request);
+        // The assignment's data files come from the database, never from the request.
+        return execute(new SandboxRunRequest(request.code(), stdinOf(request),
+                dataFileService.filesForRun(assignment.getId())));
     }
 
     /** Workspace practice code: any student may run it, since it isn't tied to a course. */
     public CodeRunResponse runPractice(RunCodeRequest request, String studentEmail) {
         requireStudent(studentEmail);
-        return execute(request);
+        return execute(new SandboxRunRequest(request.code(), stdinOf(request), List.of()));
     }
 
-    private CodeRunResponse execute(RunCodeRequest request) {
+    private static String stdinOf(RunCodeRequest request) {
+        return request.stdin() == null ? "" : request.stdin();
+    }
+
+    private CodeRunResponse execute(SandboxRunRequest request) {
         try {
             CodeRunResponse response = codeRunRestClient.post()
                     .uri("/api/code-run")

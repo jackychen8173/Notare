@@ -1,20 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Sandbox } from "@vercel/sandbox";
 
+import { prepareJavaProgram } from "@/lib/javaProgram";
+
 // The only backend logic that lives in the Next.js app (see CLAUDE.md's coding-environment
 // feature section for why) - a thin, auth-free sandbox runner. The Spring Boot backend is the
-// sole owner of student/enrollment authorization; this route trusts CODE_RUN_INTERNAL_SECRET as
-// its only gate and does nothing else security-sensitive on its own.
+// sole owner of student/enrollment authorization and decides which data files come along; this
+// route trusts CODE_RUN_INTERNAL_SECRET as its only gate and does nothing else security-sensitive.
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MAX_CODE_LENGTH = 20_000;
+const MAX_STDIN_LENGTH = 65_536;
+const MAX_FILES = 10;
+const MAX_FILE_LENGTH = 200_000;
+// Plain file names only, no folders, and nothing that could clash with the program's own files.
+const DATA_FILE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
 const SANDBOX_TIMEOUT_MS = 30_000;
-
-// Heuristic, not a real parser - matches CSAwesome's own "filename matches the class name" rule.
-// A `public class` mentioned inside a comment or string would false-positive; acceptable for v1,
-// same order of sophistication as everything else in this endpoint.
-const PUBLIC_CLASS_PATTERN = /public\s+(?:final\s+|abstract\s+)?class\s+([A-Za-z_$][A-Za-z0-9_$]*)/g;
+// Per step, inside the sandbox's own 30s session. A program that runs longer is stopped and
+// reported as timed out, with whatever it printed so far.
+const COMPILE_TIMEOUT_S = 20;
+const RUN_TIMEOUT_S = 10;
+const TIMEOUT_EXIT_CODE = 124; // what coreutils `timeout` exits with when it stops the command
 
 interface CodeRunResult {
   compileError: string | null;
@@ -24,8 +31,37 @@ interface CodeRunResult {
   timedOut: boolean;
 }
 
+interface DataFile {
+  name: string;
+  content: string;
+}
+
 function errorResponse(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
+}
+
+/** A problem with the program's shape, shown to the student the way a compile error is. */
+function programError(message: string) {
+  const result: CodeRunResult = { compileError: message, stdout: "", stderr: "", exitCode: null, timedOut: false };
+  return NextResponse.json(result);
+}
+
+function parseFiles(value: unknown): DataFile[] | string {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value) || value.length > MAX_FILES) return `files must be a list of at most ${MAX_FILES}`;
+  const files: DataFile[] = [];
+  for (const entry of value) {
+    const name = (entry as DataFile | null)?.name;
+    const content = (entry as DataFile | null)?.content;
+    if (typeof name !== "string" || !DATA_FILE_NAME.test(name) || /\.(java|class)$/i.test(name)) {
+      return "each file needs a plain name that isn't a .java or .class file";
+    }
+    if (typeof content !== "string" || content.length > MAX_FILE_LENGTH) {
+      return `each file needs text content of at most ${MAX_FILE_LENGTH} characters`;
+    }
+    files.push({ name, content });
+  }
+  return files;
 }
 
 export async function POST(request: NextRequest) {
@@ -34,7 +70,7 @@ export async function POST(request: NextRequest) {
     return errorResponse("Unauthorized", 401);
   }
 
-  let body: { code?: unknown };
+  let body: { code?: unknown; stdin?: unknown; files?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -48,18 +84,20 @@ export async function POST(request: NextRequest) {
   if (code.length > MAX_CODE_LENGTH) {
     return errorResponse(`code exceeds the ${MAX_CODE_LENGTH}-character limit`, 400);
   }
+  const stdin = body.stdin ?? "";
+  if (typeof stdin !== "string" || stdin.length > MAX_STDIN_LENGTH) {
+    return errorResponse(`stdin must be text of at most ${MAX_STDIN_LENGTH} characters`, 400);
+  }
+  const files = parseFiles(body.files);
+  if (typeof files === "string") {
+    return errorResponse(files, 400);
+  }
 
-  const classMatches = [...code.matchAll(PUBLIC_CLASS_PATTERN)];
-  if (classMatches.length === 0) {
-    return errorResponse("No public class found — your program needs exactly one `public class`.", 400);
+  const prepared = prepareJavaProgram(code);
+  if (!prepared.ok) {
+    return programError(prepared.error);
   }
-  if (classMatches.length > 1) {
-    return errorResponse(
-      "Multiple public classes found — your program can only have one `public class`.",
-      400,
-    );
-  }
-  const className = classMatches[0][1];
+  const { mainClass, fileName, source } = prepared.program;
 
   const snapshotId = process.env.JAVA_SANDBOX_SNAPSHOT_ID;
   if (!snapshotId) {
@@ -79,22 +117,27 @@ export async function POST(request: NextRequest) {
   // images - doesn't pre-create /vercel/sandbox as a real directory. Create our own working
   // directory explicitly (mkdir -p is idempotent) rather than relying on that path existing.
   const workDir = "/home/ubuntu/run";
+  const stdinPath = `${workDir}/.stdin`;
 
   try {
     await sandbox.runCommand({ cmd: "mkdir", args: ["-p", workDir] });
     await sandbox.writeFiles([
-      { path: `${workDir}/${className}.java`, content: Buffer.from(code, "utf8") },
+      { path: `${workDir}/${fileName}`, content: Buffer.from(source, "utf8") },
+      // Always written, so a program that reads input with nothing typed gets an empty stream
+      // (Scanner then says "No line found") instead of waiting forever.
+      { path: stdinPath, content: Buffer.from(stdin, "utf8") },
+      ...files.map((file) => ({ path: `${workDir}/${file.name}`, content: Buffer.from(file.content, "utf8") })),
     ]);
 
     const compile = await sandbox.runCommand({
-      cmd: "javac",
-      args: [`${className}.java`],
+      cmd: "timeout",
+      args: [String(COMPILE_TIMEOUT_S), "javac", fileName],
       cwd: workDir,
     });
 
     if (compile.exitCode !== 0) {
       const result: CodeRunResult = {
-        compileError: await compile.stderr(),
+        compileError: compile.exitCode === TIMEOUT_EXIT_CODE ? "Compiling took too long." : await compile.stderr(),
         stdout: "",
         stderr: "",
         exitCode: compile.exitCode,
@@ -103,9 +146,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result);
     }
 
+    // mainClass is a Java identifier (checked by the declaration pattern), so it's safe in sh.
     const run = await sandbox.runCommand({
-      cmd: "java",
-      args: [className],
+      cmd: "sh",
+      args: ["-c", `timeout ${RUN_TIMEOUT_S} java -Xmx256m ${mainClass} < ${stdinPath}`],
       cwd: workDir,
     });
 
@@ -114,12 +158,12 @@ export async function POST(request: NextRequest) {
       stdout: await run.stdout(),
       stderr: await run.stderr(),
       exitCode: run.exitCode,
-      timedOut: false,
+      timedOut: run.exitCode === TIMEOUT_EXIT_CODE,
     };
     return NextResponse.json(result);
   } catch (error) {
     // runCommand only rejects on an actual failure to run - in practice here that means the
-    // sandbox's own session timeout elapsed mid-command (an infinite loop, etc.).
+    // sandbox's own session timeout elapsed mid-command.
     const result: CodeRunResult = {
       compileError: null,
       stdout: "",
