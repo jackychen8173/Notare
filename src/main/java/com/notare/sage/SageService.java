@@ -1,8 +1,9 @@
 package com.notare.sage;
 
 import com.anthropic.client.AnthropicClient;
+import com.anthropic.models.messages.Message;
 import com.anthropic.models.messages.MessageCreateParams;
-import com.anthropic.models.messages.Model;
+import com.anthropic.models.messages.OutputConfig;
 import com.anthropic.models.messages.StructuredMessageCreateParams;
 import com.anthropic.models.messages.TextBlock;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -47,7 +48,9 @@ import java.util.stream.Collectors;
 @Transactional
 public class SageService {
 
-    private static final Model MODEL = Model.CLAUDE_SONNET_4_6;
+    // Room for thinking as well as the answer: thinking counts toward max_tokens on these models.
+    private static final long SONNET_MAX_TOKENS = 16000L;
+    private static final long HAIKU_MAX_TOKENS = 8000L;
 
     private static final String FEEDBACK_SYSTEM_PROMPT = """
             You are Sage, an AI teaching assistant embedded in a tutoring platform for AP Computer Science A \
@@ -280,31 +283,46 @@ public class SageService {
         return prompt.toString();
     }
 
+    /** Short rewriting and summarizing, on Haiku at low effort. Plain text out. */
     private String complete(String systemPrompt, String userMessage) {
         MessageCreateParams params = MessageCreateParams.builder()
-                .model(MODEL)
-                .maxTokens(1024L)
+                .model(SageModels.HAIKU)
+                .maxTokens(HAIKU_MAX_TOKENS)
                 .system(systemPrompt)
+                .outputConfig(OutputConfig.builder().effort(OutputConfig.Effort.LOW).build())
                 .addUserMessage(userMessage)
                 .build();
 
-        return callModel(() -> anthropicClient.messages().create(params)).content().stream()
+        Message response = callModel(() -> anthropicClient.messages().create(params));
+        SageModels.requireAnswer(response.stopReason(), response._additionalProperties());
+        // By type, not position: a response can start with a (usually empty) thinking block.
+        return response.content().stream()
                 .flatMap(block -> block.text().stream())
                 .map(TextBlock::text)
                 .collect(Collectors.joining("\n"))
                 .strip();
     }
 
+    /** Judgment calls (code review, grading), on Sonnet at medium effort. JSON out, as T. */
     private <T> T completeStructured(String systemPrompt, String userMessage, Class<T> outputType) {
-        StructuredMessageCreateParams<T> params = MessageCreateParams.builder()
-                .model(MODEL)
-                .maxTokens(2048L)
+        StructuredMessageCreateParams.Builder<T> builder = MessageCreateParams.builder()
+                .model(SageModels.SONNET)
+                .maxTokens(SONNET_MAX_TOKENS)
                 .system(systemPrompt)
                 .outputConfig(outputType)
                 .addUserMessage(userMessage)
+                .putAdditionalHeader("anthropic-beta", SageModels.FALLBACK_BETA)
+                .putAdditionalBodyProperty("fallbacks", SageModels.FALLBACKS_DEFAULT);
+        // outputConfig(Class) builds a fresh output_config holding only the JSON format, so add
+        // the effort to that one rather than setting a second output_config that would replace it.
+        OutputConfig format = builder.build().rawParams().outputConfig().orElseThrow();
+        StructuredMessageCreateParams<T> params = builder
+                .outputConfig(format.toBuilder().effort(OutputConfig.Effort.MEDIUM).build())
                 .build();
 
-        var block = callModel(() -> anthropicClient.messages().create(params)).content().stream()
+        var response = callModel(() -> anthropicClient.messages().create(params));
+        SageModels.requireAnswer(response.stopReason(), response._additionalProperties());
+        var block = response.content().stream()
                 .flatMap(cb -> cb.text().stream())
                 .findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Sage did not return feedback"));

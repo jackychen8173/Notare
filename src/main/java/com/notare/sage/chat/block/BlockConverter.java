@@ -3,7 +3,9 @@ package com.notare.sage.chat.block;
 import com.anthropic.core.JsonValue;
 import com.anthropic.models.messages.ContentBlock;
 import com.anthropic.models.messages.ContentBlockParam;
+import com.anthropic.models.messages.RedactedThinkingBlockParam;
 import com.anthropic.models.messages.TextBlockParam;
+import com.anthropic.models.messages.ThinkingBlockParam;
 import com.anthropic.models.messages.ToolResultBlockParam;
 import com.anthropic.models.messages.ToolUseBlock;
 import com.anthropic.models.messages.ToolUseBlockParam;
@@ -70,6 +72,15 @@ public final class BlockConverter {
                                 .content(toolResult.content())
                                 .isError(toolResult.isError())
                                 .build()));
+                case StoredBlock.Thinking thinking -> params.add(
+                        ContentBlockParam.ofThinking(ThinkingBlockParam.builder()
+                                .thinking(thinking.thinking())
+                                .signature(thinking.signature())
+                                .build()));
+                case StoredBlock.RedactedThinking redacted -> params.add(
+                        ContentBlockParam.ofRedactedThinking(RedactedThinkingBlockParam.builder()
+                                .data(redacted.data())
+                                .build()));
             }
         }
         return params;
@@ -85,9 +96,14 @@ public final class BlockConverter {
                 Map<String, Object> input = toolUse._input().convert(new TypeReference<Map<String, Object>>() {
                 });
                 stored.add(new StoredBlock.ToolUse(toolUse.id(), toolUse.name(), input));
+            } else if (block.isThinking()) {
+                // Kept even when the text is empty (the default): the signature is what matters.
+                stored.add(new StoredBlock.Thinking(block.asThinking().thinking(), block.asThinking().signature()));
+            } else if (block.isRedactedThinking()) {
+                stored.add(new StoredBlock.RedactedThinking(block.asRedactedThinking().data()));
             }
-            // Other block types (thinking, server tool use, etc.) are never produced by this
-            // tool set given the system prompt and are intentionally dropped rather than stored.
+            // Other block types (server tool use etc.) are never produced by this tool set and
+            // are dropped rather than stored.
         }
         return stored;
     }
