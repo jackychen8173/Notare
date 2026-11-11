@@ -124,7 +124,10 @@ export function useReviewSubmission(id: string) {
 
 export interface ReleaseFeedbackInput {
   tutorFeedback?: string;
+  /** The older free-text grade, for work that isn't scored in points. */
   grade?: string;
+  /** Before any late penalty; may be above points possible (extra credit). */
+  pointsEarned?: number;
 }
 
 export function useReleaseFeedback(id: string) {

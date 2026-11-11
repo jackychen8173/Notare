@@ -6,6 +6,7 @@ import com.notare.announcement.Announcement;
 import com.notare.announcement.AnnouncementRepository;
 import com.notare.assignment.Assignment;
 import com.notare.assignment.AssignmentRepository;
+import com.notare.assignment.AssignmentService;
 import com.notare.course.Course;
 import com.notare.course.CourseColor;
 import com.notare.course.CourseRepository;
@@ -205,7 +206,7 @@ class DemoSeeder {
                         "Nice work spotting the integer-division trap; that's the most common mistake on this one.")))
                 .tutorFeedback("Great job, Jordan. You caught the integer division issue. Next time, try the Math.round approach Sage mentioned.")
                 .feedbackStatus(FeedbackStatus.REVISED)
-                .grade("A-")
+                .pointsEarned(java.math.BigDecimal.valueOf(9))
                 .submittedAt(now.minusDays(8))
                 .releasedAt(now.minusDays(6))
                 .build());
@@ -418,7 +419,10 @@ class DemoSeeder {
 
     private Assignment assignment(Course course, Topic topic, String title, String description, LocalDate dueDate) {
         return assignmentRepository.save(Assignment.builder()
-                .course(course).topic(topic).title(title).description(description).dueDate(dueDate)
+                .course(course).topic(topic).title(title).description(description)
+                .dueAt(dueDate.atTime(AssignmentService.DEFAULT_DUE_TIME).atZone(course.zone()).toInstant())
+                .pointsPossible(DEMO_POINTS)
+                .latePenaltyPercent(DEMO_LATE_PENALTY_PERCENT)
                 .build());
     }
 
@@ -445,6 +449,9 @@ class DemoSeeder {
             throw new IllegalStateException("Could not serialize demo Sage feedback", e);
         }
     }
+
+    private static final int DEMO_POINTS = 10;
+    private static final int DEMO_LATE_PENALTY_PERCENT = 10;
 
     private static final String CONVERTER_GOOD = """
             public class TemperatureConverter {

@@ -2,6 +2,7 @@ package com.notare.assignment;
 
 import com.notare.assignment.dto.AssignmentResponse;
 import com.notare.assignment.dto.CreateAssignmentRequest;
+import com.notare.assignment.dto.UpdateAssignmentRequest;
 import com.notare.assignment.dto.UpdateAssignmentSettingsRequest;
 import com.notare.common.ApiResponse;
 import jakarta.validation.Valid;
@@ -53,6 +54,16 @@ public class AssignmentController {
             Authentication authentication
     ) {
         return ResponseEntity.ok(ApiResponse.success(assignmentService.getAssignment(id, authentication.getName())));
+    }
+
+    @PutMapping("/api/assignments/{id}")
+    public ResponseEntity<ApiResponse<AssignmentResponse>> updateAssignment(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateAssignmentRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.success(assignmentService.updateAssignment(id, request, authentication.getName())));
     }
 
     @PutMapping("/api/assignments/{id}/settings")

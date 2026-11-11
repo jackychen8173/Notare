@@ -2,6 +2,7 @@ package com.notare.home.dto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,7 +14,9 @@ public record StudentHomeResponse(
         List<HomeThread> unreadDiscussions
 ) {
     /** Not yet submitted, due recently or soon (overdue ones included). */
-    public record ToDoAssignment(UUID assignmentId, String title, HomeCourse course, LocalDate dueDate) {
+    /** dueDate is the due day in the course's time zone; dueAt is the exact moment. */
+    public record ToDoAssignment(UUID assignmentId, String title, HomeCourse course, LocalDate dueDate,
+                                 OffsetDateTime dueAt) {
     }
 
     /** A published quiz the student hasn't finished; attemptId is set when one is in progress. */

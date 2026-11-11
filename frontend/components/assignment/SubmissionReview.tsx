@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { IconGitCompare } from "@tabler/icons-react";
 
+import { LateBadge } from "@/components/assignment/AssignmentTiming";
 import { CodeReviewView } from "@/components/assignment/CodeReviewView";
 import { SageFeedbackBlock } from "@/components/sage/SageFeedbackBlock";
 import { Badge } from "@/components/ui/badge";
@@ -101,6 +102,14 @@ function RubricScoring({ submission }: { submission: Submission }) {
 export function SubmissionReview({ submission, versions }: SubmissionReviewProps) {
   const [tutorFeedback, setTutorFeedback] = useState(submission.tutorFeedback ?? "");
   const [grade, setGrade] = useState(submission.grade ?? "");
+  const [points, setPoints] = useState(submission.pointsEarned != null ? String(submission.pointsEarned) : "");
+  const scored = submission.pointsPossible != null;
+  const pointsValue = points.trim() === "" ? undefined : Number(points);
+  const pointsInvalid = pointsValue !== undefined && (!Number.isFinite(pointsValue) || pointsValue < 0);
+  const afterPenalty =
+    pointsValue !== undefined && !pointsInvalid && submission.latePenaltyPercent > 0
+      ? Math.round(pointsValue * (100 - submission.latePenaltyPercent)) / 100
+      : null;
   const [showChanges, setShowChanges] = useState(true);
   const reviewSubmission = useReviewSubmission(submission.id);
   const isDemo = useIsDemo();
@@ -144,6 +153,9 @@ export function SubmissionReview({ submission, versions }: SubmissionReviewProps
                 <IconGitCompare />
                 {showChanges ? `Changes since v${previous.attemptNumber}` : "Show changes"}
               </Button>
+            ) : null}
+            {submission.late ? (
+              <LateBadge daysLate={submission.daysLate} latePenaltyPercent={submission.latePenaltyPercent} />
             ) : null}
             <Badge variant={statusVariant[submission.feedbackStatus]}>
               {isReleased ? submission.feedbackStatus : "Not released"}
@@ -210,17 +222,47 @@ export function SubmissionReview({ submission, versions }: SubmissionReviewProps
               placeholder="Add or revise feedback before releasing to the student..."
             />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="grade">Grade (optional)</Label>
-            <Input id="grade" value={grade} onChange={(event) => setGrade(event.target.value)} className="max-w-32" />
-          </div>
+          {scored ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="points">Score (optional)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="points"
+                  inputMode="decimal"
+                  value={points}
+                  onChange={(event) => setPoints(event.target.value)}
+                  className="max-w-24"
+                  aria-invalid={pointsInvalid || undefined}
+                />
+                <span className="font-mono text-xs text-muted-foreground">/ {submission.pointsPossible}</span>
+              </div>
+              {pointsInvalid ? (
+                <p className="text-xs text-destructive">Enter a number of points, 0 or more.</p>
+              ) : afterPenalty != null ? (
+                <p className="text-xs text-muted-foreground">
+                  Handed in {submission.daysLate} {submission.daysLate === 1 ? "day" : "days"} late, so it counts as{" "}
+                  <span className="font-mono">{afterPenalty}</span> after −{submission.latePenaltyPercent}%.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {!scored || submission.grade ? (
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="grade">{scored ? "Earlier grade" : "Grade (optional)"}</Label>
+              <Input id="grade" value={grade} onChange={(event) => setGrade(event.target.value)} className="max-w-32" />
+              {scored ? (
+                <p className="text-xs text-muted-foreground">From before this assignment had points. Clear it once you give a score.</p>
+              ) : null}
+            </div>
+          ) : null}
           <Button
             type="button"
-            disabled={releaseFeedback.isPending}
+            disabled={releaseFeedback.isPending || pointsInvalid}
             onClick={() =>
               releaseFeedback.mutate({
                 tutorFeedback: tutorFeedback.trim() || undefined,
                 grade: grade.trim() || undefined,
+                pointsEarned: scored ? pointsValue : undefined,
               })
             }
           >

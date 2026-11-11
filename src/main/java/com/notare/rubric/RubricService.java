@@ -130,8 +130,10 @@ public class RubricService {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
 
-        if (!enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), assignment.getCourse().getId())) {
-            // 404, not 403 - avoid confirming the assignment exists if the student isn't enrolled
+        if (!enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), assignment.getCourse().getId())
+                || !assignment.isVisibleToStudents(java.time.Instant.now())) {
+            // 404, not 403 - avoid confirming the assignment exists if the student isn't enrolled,
+            // or before it opens
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
         }
 

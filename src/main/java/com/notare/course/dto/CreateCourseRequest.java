@@ -10,6 +10,8 @@ public record CreateCourseRequest(
         // Optional: when omitted, the least-used color among the tutor's active courses is picked.
         CourseColor color,
         // Optional: when omitted, the course has no meeting schedule.
-        CourseSchedule schedule
+        CourseSchedule schedule,
+        // Optional: an IANA zone such as "America/Toronto". When omitted, America/Vancouver.
+        String timeZone
 ) {
 }

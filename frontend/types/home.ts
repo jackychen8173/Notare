@@ -38,7 +38,7 @@ export interface TutorHome {
 }
 
 export interface StudentHome {
-  assignments: { assignmentId: string; title: string; course: HomeCourse; dueDate: string }[];
+  assignments: { assignmentId: string; title: string; course: HomeCourse; dueDate: string; dueAt: string }[];
   quizzes: {
     quizId: string;
     title: string;

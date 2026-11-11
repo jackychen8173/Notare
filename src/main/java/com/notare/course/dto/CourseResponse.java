@@ -16,6 +16,7 @@ public record CourseResponse(
         String joinCode,
         CourseColor color,
         CourseSchedule schedule,
+        String timeZone,
         LocalDateTime archivedAt
 ) {
     public static CourseResponse from(Course course) {
@@ -29,6 +30,7 @@ public record CourseResponse(
                 course.getJoinCode(),
                 course.getColor(),
                 CourseSchedule.from(course),
+                course.getTimeZone(),
                 course.getArchivedAt()
         );
     }
@@ -47,6 +49,7 @@ public record CourseResponse(
                 null,
                 course.getColor(),
                 CourseSchedule.from(course),
+                course.getTimeZone(),
                 course.getArchivedAt()
         );
     }

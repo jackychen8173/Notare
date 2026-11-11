@@ -10,7 +10,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 
 import { Button } from "@/components/ui/button";
-import { parseDateOnly } from "@/lib/dates";
+import { formatWallTime, parseDateOnly, wallClockParts } from "@/lib/dates";
 import { trimTime, weekdayIndex } from "@/lib/schedule";
 import { cn } from "@/lib/utils";
 import type { Assignment } from "@/types/assignment";
@@ -85,9 +85,11 @@ function buildEvents(
   }
 
   for (const assignment of assignments) {
+    // An all-day entry on the due day with the time in the title, both read from the course's own
+    // wall clock rather than converted by the browser (see lib/dates).
     events.push({
       id: `assignment-${assignment.id}`,
-      title: `Due: ${assignment.title}`,
+      title: `Due ${formatWallTime(wallClockParts(assignment.dueAt).time)}: ${assignment.title}`,
       start: assignment.dueDate,
       allDay: true,
       url: links.assignment(assignment.id),

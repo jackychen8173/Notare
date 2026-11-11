@@ -10,6 +10,8 @@ public record UpdateCourseRequest(
         // Optional: null keeps the current color.
         CourseColor color,
         // Optional: null keeps the current schedule; empty days (and no term dates) clears it.
-        CourseSchedule schedule
+        CourseSchedule schedule,
+        // Optional: null keeps the current time zone. Changing it doesn't move existing due times.
+        String timeZone
 ) {
 }

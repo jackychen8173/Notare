@@ -2,6 +2,7 @@ package com.notare.assignment;
 
 import com.notare.assignment.dto.AssignmentResponse;
 import com.notare.assignment.dto.CreateAssignmentRequest;
+import com.notare.assignment.dto.UpdateAssignmentRequest;
 import com.notare.assignment.dto.UpdateAssignmentSettingsRequest;
 import com.notare.course.Course;
 import com.notare.course.CourseRepository;
@@ -18,12 +19,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
 @Service
 @Transactional
 public class AssignmentService {
+
+    /** The due time when only a date is given: the end of that day. */
+    public static final LocalTime DEFAULT_DUE_TIME = LocalTime.of(23, 59);
+
+    private static final int MAX_POINTS = 10_000;
 
     private final AssignmentRepository assignmentRepository;
     private final CourseRepository courseRepository;
@@ -62,11 +72,13 @@ public class AssignmentService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Topic not found"));
         }
 
-        GradeCategory gradeCategory = null;
-        if (request.gradeCategoryId() != null) {
-            gradeCategory = gradeCategoryRepository.findById(request.gradeCategoryId())
-                    .filter(candidate -> candidate.getCourse().getId().equals(course.getId()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Grade category not found"));
+        GradeCategory gradeCategory = resolveGradeCategory(course, request.gradeCategoryId());
+
+        LocalDateTime dueAt = request.dueAt() != null
+                ? request.dueAt()
+                : request.dueDate() != null ? request.dueDate().atTime(DEFAULT_DUE_TIME) : null;
+        if (dueAt == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A due date is required");
         }
 
         Assignment assignment = Assignment.builder()
@@ -75,10 +87,28 @@ public class AssignmentService {
                 .gradeCategory(gradeCategory)
                 .title(request.title())
                 .description(request.description())
-                .dueDate(request.dueDate())
                 .allowResubmission(Boolean.TRUE.equals(request.allowResubmission()))
                 .build();
+        applyTiming(assignment, course.zone(), dueAt, request.opensAt(), request.closesAt(),
+                request.pointsPossible(), request.latePenaltyPercent());
 
+        assignmentRepository.save(assignment);
+
+        return AssignmentResponse.from(assignment);
+    }
+
+    public AssignmentResponse updateAssignment(UUID assignmentId, UpdateAssignmentRequest request, String tutorEmail) {
+        Assignment assignment = requireOwnedAssignment(assignmentId, tutorEmail);
+        Course course = assignment.getCourse();
+        if (course.getArchivedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot edit assignments in an archived course");
+        }
+
+        assignment.setTitle(request.title());
+        assignment.setDescription(request.description());
+        assignment.setGradeCategory(resolveGradeCategory(course, request.gradeCategoryId()));
+        applyTiming(assignment, course.zone(), request.dueAt(), request.opensAt(), request.closesAt(),
+                request.pointsPossible(), request.latePenaltyPercent());
         assignmentRepository.save(assignment);
 
         return AssignmentResponse.from(assignment);
@@ -117,7 +147,9 @@ public class AssignmentService {
     @Transactional(readOnly = true)
     public List<AssignmentResponse> listAssignmentsForEnrolledCourse(UUID courseId, String studentEmail) {
         Course course = requireEnrolledCourseForAssignments(courseId, studentEmail);
+        Instant now = Instant.now();
         return assignmentRepository.findByCourseId(course.getId()).stream()
+                .filter(assignment -> assignment.isVisibleToStudents(now))
                 .map(AssignmentResponse::from)
                 .toList();
     }
@@ -156,12 +188,53 @@ public class AssignmentService {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found"));
 
-        if (!enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), assignment.getCourse().getId())) {
-            // 404, not 403 - avoid confirming the assignment exists if the student isn't enrolled
+        if (!enrollmentRepository.existsByStudentIdAndCourseId(student.getId(), assignment.getCourse().getId())
+                || !assignment.isVisibleToStudents(Instant.now())) {
+            // 404, not 403 - avoid confirming the assignment exists if the student isn't enrolled,
+            // or before it opens
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
         }
 
         return assignment;
+    }
+
+    private GradeCategory resolveGradeCategory(Course course, UUID gradeCategoryId) {
+        if (gradeCategoryId == null) {
+            return null;
+        }
+        return gradeCategoryRepository.findById(gradeCategoryId)
+                .filter(candidate -> candidate.getCourse().getId().equals(course.getId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Grade category not found"));
+    }
+
+    /**
+     * Sets the due, open and close times (wall-clock times in the course's zone) and the points.
+     * Opening has to come before the due time, and closing can't come before it. A time that
+     * doesn't exist in the zone (the skipped hour when clocks go forward) moves forward by the gap.
+     */
+    private static void applyTiming(Assignment assignment, ZoneId zone, LocalDateTime dueAt, LocalDateTime opensAt,
+                                    LocalDateTime closesAt, Integer pointsPossible, Integer latePenaltyPercent) {
+        Instant due = dueAt.atZone(zone).toInstant();
+        Instant opens = opensAt != null ? opensAt.atZone(zone).toInstant() : null;
+        Instant closes = closesAt != null ? closesAt.atZone(zone).toInstant() : null;
+        if (opens != null && !opens.isBefore(due)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The assignment has to open before it's due");
+        }
+        if (closes != null && closes.isBefore(due)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The assignment can't close before it's due");
+        }
+        if (pointsPossible != null && (pointsPossible < 1 || pointsPossible > MAX_POINTS)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Points must be between 1 and " + MAX_POINTS);
+        }
+        int penalty = latePenaltyPercent != null ? latePenaltyPercent : 0;
+        if (penalty < 0 || penalty > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The late penalty must be between 0 and 100 percent");
+        }
+        assignment.setDueAt(due);
+        assignment.setOpensAt(opens);
+        assignment.setClosesAt(closes);
+        assignment.setPointsPossible(pointsPossible);
+        assignment.setLatePenaltyPercent(penalty);
     }
 
     private Course requireOwnedCourse(UUID courseId, String tutorEmail) {

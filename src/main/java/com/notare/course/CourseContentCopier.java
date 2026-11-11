@@ -110,7 +110,11 @@ public class CourseContentCopier {
                     .gradeCategory(mapCategory(gradeCategories, assignment.getGradeCategory()))
                     .title(assignment.getTitle())
                     .description(assignment.getDescription())
-                    .dueDate(assignment.getDueDate())
+                    .dueAt(assignment.getDueAt())
+                    .opensAt(assignment.getOpensAt())
+                    .closesAt(assignment.getClosesAt())
+                    .pointsPossible(assignment.getPointsPossible())
+                    .latePenaltyPercent(assignment.getLatePenaltyPercent())
                     .allowResubmission(assignment.isAllowResubmission())
                     .build());
             rubricRepository.findByAssignmentId(assignment.getId())

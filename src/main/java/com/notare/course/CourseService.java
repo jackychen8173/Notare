@@ -60,6 +60,7 @@ public class CourseService {
                 .description(request.description())
                 .joinCode(generateUniqueJoinCode())
                 .color(request.color() != null ? request.color() : nextColor(tutor, null))
+                .timeZone(request.timeZone() != null ? requireTimeZone(request.timeZone()) : Course.DEFAULT_TIME_ZONE)
                 .build();
         if (request.schedule() != null) {
             applySchedule(course, request.schedule());
@@ -88,6 +89,7 @@ public class CourseService {
                 // and a reused course is for a different term.
                 // Never the source's color, so parallel sections are easy to tell apart.
                 .color(nextColor(source.getTutor(), source.getColor()))
+                .timeZone(source.getTimeZone())
                 .build());
 
         courseContentCopier.copy(source, copy);
@@ -114,6 +116,9 @@ public class CourseService {
         }
         if (request.schedule() != null) {
             applySchedule(course, request.schedule());
+        }
+        if (request.timeZone() != null) {
+            course.setTimeZone(requireTimeZone(request.timeZone()));
         }
         courseRepository.save(course);
 
@@ -164,6 +169,14 @@ public class CourseService {
         }
 
         enrollmentRepository.deleteByStudentIdAndCourseId(studentId, course.getId());
+    }
+
+    /** A region-based IANA zone ID ("America/Toronto"), not an offset like "+05:00" or an alias like "PST". */
+    private static String requireTimeZone(String timeZone) {
+        if (!java.time.ZoneId.getAvailableZoneIds().contains(timeZone)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown time zone: " + timeZone);
+        }
+        return timeZone;
     }
 
     /**
