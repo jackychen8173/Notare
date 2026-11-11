@@ -68,6 +68,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -212,7 +213,8 @@ public class SageToolExecutor {
         return switch (toolName) {
             case "release_feedback" -> {
                 Submission submission = requireOwnedSubmission(uuidParam(input, "submissionId"), tutor);
-                String gradeClause = input.get("grade") != null ? " with grade " + input.get("grade") : "";
+                String gradeClause = (input.get("pointsEarned") != null ? " with " + input.get("pointsEarned") + " points" : "")
+                        + (input.get("grade") != null ? " with grade " + input.get("grade") : "");
                 String feedbackClause = input.get("tutorFeedback") != null
                         ? " Tutor feedback: \"" + input.get("tutorFeedback") + "\""
                         : "";
@@ -252,8 +254,11 @@ public class SageToolExecutor {
                 Course course = requireOwnedCourse(uuidParam(input, "courseId"), tutor);
                 String descClause = input.get("description") != null
                         ? " Description: \"" + input.get("description") + "\"" : "";
+                String time = input.get("dueTime") != null ? " at " + input.get("dueTime") : " at 23:59";
+                String points = input.get("pointsPossible") != null ? ", worth " + input.get("pointsPossible") + " points" : "";
                 yield "Create assignment \"" + input.get("title") + "\" in " + course.getName()
-                        + ", due " + input.get("dueDate") + "." + descClause;
+                        + ", due " + input.get("dueDate") + time + " (" + course.getTimeZone() + ")" + points + "."
+                        + descClause;
             }
             case "create_material" -> {
                 Course course = requireOwnedCourse(uuidParam(input, "courseId"), tutor);
@@ -445,8 +450,9 @@ public class SageToolExecutor {
         UUID submissionId = uuidParam(input, "submissionId");
         String grade = input.get("grade") != null ? String.valueOf(input.get("grade")) : null;
         String tutorFeedback = input.get("tutorFeedback") != null ? String.valueOf(input.get("tutorFeedback")) : null;
+        BigDecimal pointsEarned = input.get("pointsEarned") != null ? bigDecimalParam(input, "pointsEarned") : null;
         return submissionService.releaseFeedback(submissionId,
-                new ReleaseFeedbackRequest(tutorFeedback, grade), tutor.getEmail());
+                new ReleaseFeedbackRequest(tutorFeedback, grade, pointsEarned), tutor.getEmail());
     }
 
     private SessionResponse scheduleSession(Map<String, Object> input, User tutor) {
@@ -475,7 +481,7 @@ public class SageToolExecutor {
         String name = String.valueOf(input.get("name"));
         String subject = String.valueOf(input.get("subject"));
         String description = input.get("description") != null ? String.valueOf(input.get("description")) : null;
-        return courseService.updateCourse(courseId, new UpdateCourseRequest(name, subject, description, null, null), tutor.getEmail());
+        return courseService.updateCourse(courseId, new UpdateCourseRequest(name, subject, description, null, null, null), tutor.getEmail());
     }
 
     private AssignmentResponse createAssignment(Map<String, Object> input, User tutor) {
@@ -483,10 +489,15 @@ public class SageToolExecutor {
         String title = String.valueOf(input.get("title"));
         String description = input.get("description") != null ? String.valueOf(input.get("description")) : null;
         LocalDate dueDate = localDateParam(input, "dueDate");
+        LocalTime dueTime = input.get("dueTime") != null
+                ? localTimeParam(input, "dueTime") : AssignmentService.DEFAULT_DUE_TIME;
+        Integer pointsPossible = input.get("pointsPossible") != null ? intParam(input, "pointsPossible") : null;
         UUID topicId = input.get("topicId") != null ? uuidParam(input, "topicId") : null;
         UUID gradeCategoryId = input.get("gradeCategoryId") != null ? uuidParam(input, "gradeCategoryId") : null;
         return assignmentService.createAssignment(courseId,
-                new CreateAssignmentRequest(title, description, dueDate, topicId, gradeCategoryId, null), tutor.getEmail());
+                new CreateAssignmentRequest(title, description, null, topicId, gradeCategoryId, null,
+                        dueDate.atTime(dueTime), null, null, pointsPossible, null),
+                tutor.getEmail());
     }
 
     private MaterialResponse createMaterial(Map<String, Object> input, User tutor) {
@@ -704,6 +715,15 @@ public class SageToolExecutor {
             return new BigDecimal(String.valueOf(value));
         } catch (NumberFormatException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid number for " + key + ": " + value);
+        }
+    }
+
+    private LocalTime localTimeParam(Map<String, Object> input, String key) {
+        Object value = input.get(key);
+        try {
+            return LocalTime.parse(String.valueOf(value));
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid " + key + ": expected HH:mm, e.g. 15:30");
         }
     }
 

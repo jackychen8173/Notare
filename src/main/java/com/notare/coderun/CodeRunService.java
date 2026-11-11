@@ -55,6 +55,9 @@ public class CodeRunService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "You are not enrolled in this assignment's course");
         }
+        if (!assignment.isVisibleToStudents(java.time.Instant.now())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
+        }
 
         return execute(request);
     }

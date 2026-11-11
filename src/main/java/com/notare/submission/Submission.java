@@ -21,7 +21,10 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Entity
@@ -65,11 +68,20 @@ public class Submission {
 
     private String grade;
 
+    /** Points before any late penalty. Null until the tutor gives a score in points. */
+    @Column(name = "points_earned", precision = 7, scale = 2)
+    private BigDecimal pointsEarned;
+
     @Column(name = "submitted_at", nullable = false, updatable = false)
     private LocalDateTime submittedAt;
 
     @Column(name = "released_at")
     private LocalDateTime releasedAt;
+
+    /** submittedAt is written in the JVM's zone (see onCreate); this is the moment it means. */
+    public Instant submittedInstant() {
+        return submittedAt.atZone(ZoneId.systemDefault()).toInstant();
+    }
 
     @PrePersist
     protected void onCreate() {

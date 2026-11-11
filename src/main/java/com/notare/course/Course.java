@@ -80,4 +80,15 @@ public class Course {
 
     @Column(name = "archived_at")
     private LocalDateTime archivedAt;
+
+    /** IANA zone (e.g. "America/Vancouver") that due times and other wall-clock times in this course are in. */
+    @Builder.Default
+    @Column(name = "time_zone", nullable = false, length = 64)
+    private String timeZone = DEFAULT_TIME_ZONE;
+
+    public static final String DEFAULT_TIME_ZONE = "America/Vancouver";
+
+    public java.time.ZoneId zone() {
+        return java.time.ZoneId.of(timeZone);
+    }
 }

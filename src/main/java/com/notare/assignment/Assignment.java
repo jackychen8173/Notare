@@ -17,7 +17,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -50,10 +50,37 @@ public class Assignment {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "due_date", nullable = false)
-    private LocalDate dueDate;
+    /** When it's due. Shown and edited as a wall-clock time in the course's time zone. */
+    @Column(name = "due_at", nullable = false)
+    private Instant dueAt;
+
+    /** Students can't see the assignment before this. Null: visible as soon as it's created. */
+    @Column(name = "opens_at")
+    private Instant opensAt;
+
+    /** No submissions after this. Null: late work is accepted any time; equal to dueAt: locks at the due time. */
+    @Column(name = "closes_at")
+    private Instant closesAt;
+
+    /** Null: not scored in points (the free-text grade still works). */
+    @Column(name = "points_possible")
+    private Integer pointsPossible;
+
+    /** Percent of the points taken off per day late, or part of a day (0-100). */
+    @Column(name = "late_penalty_percent", nullable = false)
+    @Builder.Default
+    private int latePenaltyPercent = 0;
 
     @Column(name = "allow_resubmission", nullable = false)
     @Builder.Default
     private boolean allowResubmission = false;
+
+    /** The one rule for whether students can see this assignment yet. */
+    public boolean isVisibleToStudents(Instant now) {
+        return opensAt == null || !now.isBefore(opensAt);
+    }
+
+    public boolean isAcceptingSubmissions(Instant now) {
+        return isVisibleToStudents(now) && (closesAt == null || now.isBefore(closesAt));
+    }
 }

@@ -29,10 +29,10 @@ Credentials: user `notare` / password `changeme` / db `notare`.
 
 ## 2. Backend (Spring Boot, JDK 21)
 
-The system default JDK is 19 — must override `JAVA_HOME` to the JDK 21 install for this repo (per `CLAUDE.md`, Spring Boot 4.1 requires Java 21):
+The system default JDK is 19 — must override `JAVA_HOME` to the JDK 21 install for this repo (per `CLAUDE.md`, Spring Boot 4.1 requires Java 21). Use Temurin 21.0.13 in `~/.jdks` (unzipped from the Adoptium API, 2026-11-10), not the older `C:\Program Files\Eclipse Adoptium\jdk-21.0.7.6-hotspot`: JDKs before 21.0.12.1 carry time zone data from before BC moved to permanent UTC-7, so due times come out an hour off and `AssignmentTimingTest` fails.
 
 ```bash
-export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-21.0.7.6-hotspot"
+export JAVA_HOME="$HOME/.jdks/jdk-21.0.13+9"
 export DATABASE_URL="jdbc:postgresql://localhost:45432/notare"
 export DATABASE_USERNAME="notare"
 export DATABASE_PASSWORD="changeme"

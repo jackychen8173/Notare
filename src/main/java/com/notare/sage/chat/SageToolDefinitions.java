@@ -103,7 +103,8 @@ public final class SageToolDefinitions {
                             + "This is a write action requiring tutor confirmation before it takes effect.",
                     List.of(
                             new Param("submissionId", "string", "The submission's UUID"),
-                            new Param("grade", "string", "Optional grade to set (free text, e.g. 'B+' or '18/20')"),
+                            new Param("pointsEarned", "number", "Optional score in points, before any late penalty, when the assignment is worth points"),
+                            new Param("grade", "string", "Optional free-text grade (e.g. 'B+'), for assignments that aren't worth points"),
                             new Param("tutorFeedback", "string", "Optional tutor commentary to add alongside or instead of Sage's feedback")),
                     List.of("submissionId")),
             tool("schedule_session",
@@ -144,6 +145,8 @@ public final class SageToolDefinitions {
                             new Param("title", "string", "The assignment's title"),
                             new Param("description", "string", "Optional assignment description"),
                             new Param("dueDate", "string", "ISO-8601 date, e.g. 2026-09-20"),
+                            new Param("dueTime", "string", "Optional due time as HH:mm in the course's time zone, e.g. 15:30 (default 23:59)"),
+                            new Param("pointsPossible", "integer", "Optional points the assignment is worth, e.g. 100"),
                             new Param("topicId", "string", "Optional topic UUID to associate this assignment with"),
                             new Param("gradeCategoryId", "string", "Optional grade category UUID this assignment counts toward")),
                     List.of("courseId", "title", "dueDate")),

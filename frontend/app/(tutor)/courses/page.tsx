@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { CourseCard } from "@/components/course/CourseCard";
 import { CourseScheduleFields } from "@/components/course/CourseScheduleFields";
+import { TimeZoneField } from "@/components/course/TimeZoneField";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useCourses, useCreateCourse } from "@/hooks/useCourses";
+import { browserTimeZone } from "@/lib/dates";
 import { formToSchedule, scheduleFormSchema, scheduleToForm } from "@/lib/schedule";
 
 const createCourseSchema = z.object({
@@ -31,6 +33,7 @@ const createCourseSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   description: z.string().optional(),
   schedule: scheduleFormSchema,
+  timeZone: z.string().min(1),
 });
 
 type CreateCourseValues = z.infer<typeof createCourseSchema>;
@@ -46,13 +49,13 @@ function NewCourseDialog() {
     formState: { errors },
   } = useForm<CreateCourseValues>({
     resolver: zodResolver(createCourseSchema),
-    defaultValues: { schedule: scheduleToForm(null) },
+    defaultValues: { schedule: scheduleToForm(null), timeZone: browserTimeZone() },
   });
 
   function onSubmit({ schedule, ...values }: CreateCourseValues) {
     createCourse.mutate({ ...values, schedule: formToSchedule(schedule) }, {
       onSuccess: () => {
-        reset();
+        reset({ schedule: scheduleToForm(null), timeZone: browserTimeZone() });
         setOpen(false);
       },
     });
@@ -99,6 +102,11 @@ function NewCourseDialog() {
                 error={errors.schedule?.message}
               />
             )}
+          />
+          <Controller
+            control={control}
+            name="timeZone"
+            render={({ field }) => <TimeZoneField id="new-course-time-zone" value={field.value} onChange={field.onChange} />}
           />
           <DialogFooter>
             <Button type="submit" disabled={createCourse.isPending}>

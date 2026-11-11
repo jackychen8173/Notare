@@ -23,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +72,14 @@ public class SubmissionService {
                 student.getId(), assignment.getCourse().getId());
         if (!enrolled) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not enrolled in this assignment's course");
+        }
+        Instant now = Instant.now();
+        if (!assignment.isVisibleToStudents(now)) {
+            // Not open yet: as far as the student knows, it doesn't exist.
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignment not found");
+        }
+        if (!assignment.isAcceptingSubmissions(now)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This assignment is closed and no longer accepts submissions");
         }
 
         // One version at a time: a new one only once the last has feedback, and only if the tutor
@@ -238,6 +247,7 @@ public class SubmissionService {
             submission.setTutorFeedback(request.tutorFeedback());
         }
         submission.setGrade(request.grade());
+        submission.setPointsEarned(request.pointsEarned());
         // REVISED when the tutor added their own commentary on top of (or instead of) Sage's draft, APPROVED otherwise
         submission.setFeedbackStatus(
                 hasTutorFeedback || hasTutorLineComments ? FeedbackStatus.REVISED : FeedbackStatus.APPROVED);

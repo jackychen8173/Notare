@@ -24,6 +24,14 @@ export interface Submission {
   rubricScores: RubricScoreItem[];
   rubricTotalAwarded: number | null;
   rubricTotalPossible: number | null;
+  /** Before any late penalty. Hidden from the student until released. */
+  pointsEarned: number | null;
+  pointsPossible: number | null;
+  /** What counts after the late penalty. Hidden from the student until released. */
+  pointsAfterPenalty: number | null;
+  late: boolean;
+  daysLate: number;
+  latePenaltyPercent: number;
 }
 
 /** SUGGESTED: a Sage draft only the tutor sees. PUBLISHED: shown to the student once feedback is released. */

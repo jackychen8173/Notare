@@ -30,8 +30,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -131,7 +133,7 @@ public class HomeService {
             return new StudentHomeResponse(List.of(), List.of(), List.of(), List.of());
         }
 
-        LocalDate today = LocalDate.now();
+        Instant nowInstant = Instant.now();
         LocalDateTime now = LocalDateTime.now();
         List<Submission> mySubmissions = submissionRepository.findByStudentId(student.getId());
         Set<UUID> submittedAssignmentIds = mySubmissions.stream()
@@ -140,11 +142,16 @@ public class HomeService {
 
         List<StudentHomeResponse.ToDoAssignment> toDo = assignmentRepository.findByCourseIdIn(courses.keySet()).stream()
                 .filter(a -> !submittedAssignmentIds.contains(a.getId()))
-                .filter(a -> !a.getDueDate().isBefore(today.minusDays(OVERDUE_DAYS))
-                        && !a.getDueDate().isAfter(today.plusDays(UPCOMING_DAYS)))
-                .sorted(Comparator.comparing(Assignment::getDueDate))
-                .map(a -> new StudentHomeResponse.ToDoAssignment(
-                        a.getId(), a.getTitle(), HomeCourse.from(a.getCourse()), a.getDueDate()))
+                // Closed ones are left out: there's nothing the student can do about them any more.
+                .filter(a -> a.isAcceptingSubmissions(nowInstant))
+                .filter(a -> !a.getDueAt().isBefore(nowInstant.minus(Duration.ofDays(OVERDUE_DAYS)))
+                        && !a.getDueAt().isAfter(nowInstant.plus(Duration.ofDays(UPCOMING_DAYS))))
+                .sorted(Comparator.comparing(Assignment::getDueAt))
+                .map(a -> {
+                    OffsetDateTime dueAt = a.getDueAt().atZone(a.getCourse().zone()).toOffsetDateTime();
+                    return new StudentHomeResponse.ToDoAssignment(
+                            a.getId(), a.getTitle(), HomeCourse.from(a.getCourse()), dueAt.toLocalDate(), dueAt);
+                })
                 .toList();
 
         Map<UUID, QuizAttempt> myAttemptsByQuiz = quizAttemptRepository.findByStudentId(student.getId()).stream()

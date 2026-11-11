@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { ClassUnitProgress } from "@/components/progress/UnitProgress";
 import { AnnouncementsSection } from "@/components/course/AnnouncementsSection";
+import { AssignmentFormDialog } from "@/components/assignment/AssignmentFormDialog";
 import { ClassworkByTopic } from "@/components/course/ClassworkByTopic";
 import { CourseBanner } from "@/components/course/CourseBanner";
 import { CourseColorPicker } from "@/components/course/CourseColorPicker";
@@ -16,6 +17,7 @@ import { CourseScheduleFields } from "@/components/course/CourseScheduleFields";
 import { CourseTabs, useCourseTab, type CourseTab } from "@/components/course/CourseTabs";
 import { GradeCategoriesManager } from "@/components/course/GradeCategoriesManager";
 import { MaterialsSection } from "@/components/course/MaterialsSection";
+import { TimeZoneField } from "@/components/course/TimeZoneField";
 import { TopicsManager } from "@/components/course/TopicsManager";
 import { UpcomingCard } from "@/components/course/UpcomingCard";
 import { DiscussionsSection } from "@/components/discussion/DiscussionsSection";
@@ -40,7 +42,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { COURSE_COLORS, type Course } from "@/types/course";
-import { useCreateAssignment, useCourseAssignments } from "@/hooks/useAssignments";
+import { useCourseAssignments } from "@/hooks/useAssignments";
 import {
   useArchiveCourse,
   useCourse,
@@ -63,151 +65,12 @@ const editCourseSchema = z.object({
   description: z.string().optional(),
   color: z.enum(COURSE_COLORS as [Course["color"], ...Course["color"][]]),
   schedule: scheduleFormSchema,
+  timeZone: z.string().min(1),
 });
 
 type EditCourseValues = z.infer<typeof editCourseSchema>;
 
 const NO_TOPIC = "__none__";
-
-const createAssignmentSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
-  dueDate: z.string().min(1, "Due date is required"),
-  topicId: z.string().optional(),
-  gradeCategoryId: z.string().optional(),
-  allowResubmission: z.boolean().optional(),
-});
-
-type CreateAssignmentValues = z.infer<typeof createAssignmentSchema>;
-
-function NewAssignmentDialog({ courseId }: { courseId: string }) {
-  const [open, setOpen] = useState(false);
-  const createAssignment = useCreateAssignment(courseId);
-  const topics = useTopics(courseId);
-  const gradeCategories = useGradeCategories(courseId);
-  const {
-    register,
-    control,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<CreateAssignmentValues>({ resolver: zodResolver(createAssignmentSchema) });
-
-  function onSubmit(values: CreateAssignmentValues) {
-    createAssignment.mutate(
-      {
-        ...values,
-        topicId: values.topicId === NO_TOPIC ? undefined : values.topicId,
-        gradeCategoryId: values.gradeCategoryId === NO_TOPIC ? undefined : values.gradeCategoryId,
-      },
-      {
-        onSuccess: () => {
-          reset();
-          setOpen(false);
-        },
-      },
-    );
-  }
-
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        setOpen(nextOpen);
-        if (!nextOpen) reset();
-      }}
-    >
-      <DialogTrigger render={<Button variant="outline">New assignment</Button>} />
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>New assignment</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" {...register("title")} />
-            {errors.title ? (
-              <p className="text-xs text-destructive">{errors.title.message}</p>
-            ) : null}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="description">Description (optional)</Label>
-            <Textarea id="description" rows={3} {...register("description")} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="dueDate">Due date</Label>
-            <Input id="dueDate" type="date" {...register("dueDate")} />
-            {errors.dueDate ? (
-              <p className="text-xs text-destructive">{errors.dueDate.message}</p>
-            ) : null}
-          </div>
-          {topics.data && topics.data.length > 0 ? (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="topicId">Unit (optional)</Label>
-              <Controller
-                control={control}
-                name="topicId"
-                render={({ field }) => (
-                  <Select value={field.value ?? NO_TOPIC} onValueChange={field.onChange}>
-                    <SelectTrigger id="topicId" className="w-full">
-                      <SelectValue placeholder="No unit" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_TOPIC}>No unit</SelectItem>
-                      {topics.data?.map((topic) => (
-                        <SelectItem key={topic.id} value={topic.id}>
-                          {topic.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          ) : null}
-          {gradeCategories.data && gradeCategories.data.length > 0 ? (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="gradeCategoryId">Grade category (optional)</Label>
-              <Controller
-                control={control}
-                name="gradeCategoryId"
-                render={({ field }) => (
-                  <Select value={field.value ?? NO_TOPIC} onValueChange={field.onChange}>
-                    <SelectTrigger id="gradeCategoryId" className="w-full">
-                      <SelectValue placeholder="No category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NO_TOPIC}>No category</SelectItem>
-                      {gradeCategories.data?.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-          ) : null}
-          <label className="flex items-start gap-2 text-sm text-foreground">
-            <input type="checkbox" className="mt-1 accent-primary" {...register("allowResubmission")} />
-            <span>
-              Allow resubmission
-              <span className="block text-xs text-muted-foreground">
-                After you release feedback, students can fix their code and submit a new version.
-              </span>
-            </span>
-          </label>
-          <DialogFooter>
-            <Button type="submit" disabled={createAssignment.isPending}>
-              {createAssignment.isPending ? "Creating..." : "Create assignment"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 const createQuizSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -404,6 +267,7 @@ function EditCourseDialog({ course }: { course: Course }) {
       description: course.description ?? "",
       color: course.color,
       schedule: scheduleToForm(course.schedule),
+      timeZone: course.timeZone,
     },
   });
 
@@ -460,6 +324,18 @@ function EditCourseDialog({ course }: { course: Course }) {
                 value={field.value}
                 onChange={field.onChange}
                 error={errors.schedule?.message}
+              />
+            )}
+          />
+          <Controller
+            control={control}
+            name="timeZone"
+            render={({ field }) => (
+              <TimeZoneField
+                id="edit-course-time-zone"
+                value={field.value}
+                onChange={field.onChange}
+                hint="Due times are set in this time zone. Changing it doesn't move due times you've already set."
               />
             )}
           />
@@ -704,7 +580,11 @@ function CourseDetail({ id }: { id: string }) {
               <h2 className="text-lg font-semibold text-foreground">Assignments &amp; quizzes</h2>
               {!archived ? (
                 <div className="flex gap-2">
-                  <NewAssignmentDialog courseId={id} />
+                  <AssignmentFormDialog
+                    courseId={id}
+                    timeZone={course.data.timeZone}
+                    trigger={<Button variant="outline">New assignment</Button>}
+                  />
                   <NewQuizDialog courseId={id} />
                 </div>
               ) : null}

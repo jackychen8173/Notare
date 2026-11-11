@@ -4,7 +4,8 @@ $ErrorActionPreference = "Stop"
 
 docker start notare-local-pg
 
-$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-21.0.7.6-hotspot"
+# JDK 21.0.12.1 or later: older ones have BC's time zone wrong (permanent UTC-7 since 2026-11-01).
+$env:JAVA_HOME = "$env:USERPROFILE\.jdks\jdk-21.0.13+9"
 $env:DATABASE_URL = "jdbc:postgresql://localhost:45432/notare"
 $env:DATABASE_USERNAME = "notare"
 $env:DATABASE_PASSWORD = "changeme"

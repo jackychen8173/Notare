@@ -30,5 +30,7 @@ export interface Course {
   joinCode: string | null;
   color: CourseColor;
   schedule: CourseSchedule | null;
+  /** IANA zone, e.g. "America/Vancouver". Due times are set and shown in it. */
+  timeZone: string;
   archivedAt: string | null;
 }

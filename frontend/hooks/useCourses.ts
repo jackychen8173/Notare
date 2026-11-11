@@ -77,6 +77,8 @@ export interface CreateCourseInput {
   subject: string;
   description?: string;
   schedule?: CourseSchedule;
+  /** IANA zone; defaults to America/Vancouver. */
+  timeZone?: string;
 }
 
 export function useCreateCourse() {
@@ -136,6 +138,8 @@ export interface UpdateCourseInput {
   description?: string;
   color?: CourseColor;
   schedule?: CourseSchedule;
+  /** IANA zone; omitted keeps the current one. */
+  timeZone?: string;
 }
 
 export function useUpdateCourse(courseId: string) {

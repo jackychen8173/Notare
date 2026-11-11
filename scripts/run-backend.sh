@@ -5,7 +5,8 @@ set -e
 
 docker start notare-local-pg
 
-export JAVA_HOME="/c/Program Files/Eclipse Adoptium/jdk-21.0.7.6-hotspot"
+# JDK 21.0.12.1 or later: older ones have BC's time zone wrong (permanent UTC-7 since 2026-11-01).
+export JAVA_HOME="$HOME/.jdks/jdk-21.0.13+9"
 export DATABASE_URL="jdbc:postgresql://localhost:45432/notare"
 export DATABASE_USERNAME="notare"
 export DATABASE_PASSWORD="changeme"

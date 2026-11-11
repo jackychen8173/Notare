@@ -47,3 +47,50 @@ export function formatClock(value: string | Date): string {
 export function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
+
+// ---- Due times ---------------------------------------------------------------------------
+// Assignment times come from the backend with the course time zone's offset, e.g.
+// "2026-11-20T23:59:00-07:00". The first 16 characters are the wall-clock time in the course's
+// zone, so they're shown and edited as-is. Only "how long until" uses the exact moment. This way
+// a browser with out-of-date time zone data (BC moved to permanent UTC-7 in Nov 2026) can't shift
+// a due time.
+
+/** "2026-11-20T23:59" for a datetime value, in the course's zone. */
+export function wallClock(value: string): string {
+  return value.slice(0, 16);
+}
+
+/** Wall-clock date and "HH:mm" time, for separate date and time inputs. */
+export function wallClockParts(value: string): { date: string; time: string } {
+  return { date: value.slice(0, 10), time: value.slice(11, 16) };
+}
+
+/** "11:59 PM" for an "HH:mm" wall-clock time, in the viewer's format. */
+export function formatWallTime(time: string): string {
+  const [hours, minutes] = time.split(":").map(Number);
+  // Jan 1, 2000 has no daylight-saving gap anywhere, so every time of day exists.
+  return new Date(2000, 0, 1, hours, minutes).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+/** "Vancouver time" for "America/Vancouver". */
+export function zoneLabel(timeZone: string): string {
+  return `${timeZone.split("/").pop()?.replace(/_/g, " ") ?? timeZone} time`;
+}
+
+export function browserTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/**
+ * "Fri, Nov 20, 11:59 PM" in the course's time zone, with "(Vancouver time)" added when the
+ * viewer's own zone is different.
+ */
+export function formatDueAt(value: string, timeZone?: string): string {
+  const { date, time } = wallClockParts(value);
+  const text = `${formatDueDate(date)}, ${formatWallTime(time)}`;
+  return timeZone && timeZone !== browserTimeZone() ? `${text} (${zoneLabel(timeZone)})` : text;
+}
+
+export function isPast(value: string): boolean {
+  return new Date(value).getTime() < Date.now();
+}

@@ -4,6 +4,7 @@ import { use, useState } from "react";
 import { IconArrowBackUp, IconGitCompare } from "@tabler/icons-react";
 
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { AssignmentTiming, LateBadge } from "@/components/assignment/AssignmentTiming";
 import { CodeReviewView } from "@/components/assignment/CodeReviewView";
 import { SubmissionForm } from "@/components/assignment/SubmissionForm";
 import { RubricView } from "@/components/rubric/RubricView";
@@ -15,7 +16,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useMyAssignment } from "@/hooks/useAssignments";
 import { useMyLineComments, useMySubmissions } from "@/hooks/useSubmissions";
 import type { FeedbackStatus, Submission } from "@/types/submission";
-import { formatDueDate } from "@/lib/dates";
 import { cn } from "@/lib/utils";
 
 const statusVariant: Record<FeedbackStatus, "default" | "secondary"> = {
@@ -52,7 +52,8 @@ export default function StudentAssignmentDetailPage({
   const versions = submissions.data ?? [];
   const latest = versions[0];
   const selected = versions.find((v) => v.id === selectedId) ?? latest;
-  const canResubmit = latest?.releasedAt != null && assignment.data.allowResubmission;
+  const open = assignment.data.acceptingSubmissions;
+  const canResubmit = open && latest?.releasedAt != null && assignment.data.allowResubmission;
 
   return (
     <div className="flex flex-col gap-6">
@@ -66,9 +67,12 @@ export default function StudentAssignmentDetailPage({
         />
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{assignment.data.title}</h1>
         <p className="text-sm text-muted-foreground">
-          {assignment.data.courseName} · Due {formatDueDate(assignment.data.dueDate)}
+          {assignment.data.courseName}
           {assignment.data.allowResubmission ? " · Resubmission allowed after feedback" : null}
         </p>
+        <div className="mt-1">
+          <AssignmentTiming assignment={assignment.data} audience="student" />
+        </div>
         {assignment.data.description ? (
           <p className="mt-2 text-sm text-muted-foreground">{assignment.data.description}</p>
         ) : null}
@@ -78,6 +82,14 @@ export default function StudentAssignmentDetailPage({
 
       {submissions.isLoading ? (
         <Skeleton className="h-32 w-full" />
+      ) : !latest && !open ? (
+        <Card>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              This assignment closed before you handed anything in. Ask your teacher if you still want to submit it.
+            </p>
+          </CardContent>
+        </Card>
       ) : !latest ? (
         <SubmissionForm
           assignmentId={id}
@@ -129,6 +141,9 @@ export default function StudentAssignmentDetailPage({
               <span className="text-xs text-muted-foreground">
                 Submitted {new Date(selected.submittedAt).toLocaleString()}
               </span>
+              {selected.late ? (
+                <LateBadge daysLate={selected.daysLate} latePenaltyPercent={selected.latePenaltyPercent} />
+              ) : null}
               <Badge variant={statusVariant[selected.feedbackStatus]}>
                 {selected.releasedAt ? "Feedback returned" : "Awaiting review"}
               </Badge>
@@ -204,6 +219,21 @@ function SubmissionFeedback({ submission, previous }: { submission: Submission; 
             <div className="md:col-span-2">
               <SageFeedbackBlock feedbackJson={submission.sageFeedback} />
             </div>
+          ) : null}
+          {submission.pointsEarned != null && submission.pointsPossible != null ? (
+            <Card>
+              <CardContent>
+                <p className="text-xs font-medium text-muted-foreground">Score</p>
+                <p className="font-mono text-2xl font-semibold text-foreground">
+                  {submission.pointsAfterPenalty ?? submission.pointsEarned} / {submission.pointsPossible}
+                </p>
+                {submission.latePenaltyPercent > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {submission.pointsEarned} before the late penalty (−{submission.latePenaltyPercent}%)
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
           ) : null}
           {submission.grade ? (
             <Card>

@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -85,7 +86,7 @@ public class ProgressService {
                 // 404, not 403 - avoid confirming the course exists if the student isn't enrolled
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
 
-        CourseWork work = loadWork(course);
+        CourseWork work = loadWork(course, true);
         LocalDateTime now = LocalDateTime.now();
 
         Map<UUID, Submission> latestSubmission = new HashMap<>();
@@ -103,7 +104,7 @@ public class ProgressService {
             List<StudentProgressResponse.Item> items = new ArrayList<>();
             for (Assignment assignment : work.assignmentsIn(unit)) {
                 items.add(new StudentProgressResponse.Item(assignment.getId(), ItemKind.ASSIGNMENT,
-                        assignment.getTitle(), assignment.getDueDate(), statusOf(latestSubmission.get(assignment.getId()))));
+                        assignment.getTitle(), assignment.getDueAt().atZone(course.zone()).toLocalDate(), statusOf(latestSubmission.get(assignment.getId()))));
             }
             for (Quiz quiz : work.quizzesIn(unit)) {
                 items.add(new StudentProgressResponse.Item(quiz.getId(), ItemKind.QUIZ,
@@ -122,7 +123,7 @@ public class ProgressService {
                 // 404, not 403 - avoid confirming another tutor's course exists
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Course not found"));
 
-        CourseWork work = loadWork(course);
+        CourseWork work = loadWork(course, false);
         LocalDateTime now = LocalDateTime.now();
 
         // (studentId -> assignment/quiz IDs they've finished)
@@ -159,10 +160,13 @@ public class ProgressService {
         return new CourseProgressResponse(units, students);
     }
 
-    private CourseWork loadWork(Course course) {
+    /** studentView leaves out assignments that haven't opened yet. */
+    private CourseWork loadWork(Course course, boolean studentView) {
         List<Topic> topics = topicRepository.findByCourseIdOrderByCreatedAtAsc(course.getId());
+        Instant now = Instant.now();
         List<Assignment> assignments = assignmentRepository.findByCourseId(course.getId()).stream()
-                .sorted(Comparator.comparing(Assignment::getDueDate))
+                .filter(assignment -> !studentView || assignment.isVisibleToStudents(now))
+                .sorted(Comparator.comparing(Assignment::getDueAt))
                 .toList();
         List<Quiz> quizzes = quizRepository.findByCourseIdAndPublishedAtIsNotNull(course.getId()).stream()
                 .sorted(Comparator.comparing(Quiz::getPublishedAt))

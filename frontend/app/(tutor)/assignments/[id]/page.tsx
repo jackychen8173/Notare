@@ -7,15 +7,28 @@ import { IconInbox } from "@tabler/icons-react";
 
 import { EmptyState } from "@/components/layout/EmptyState";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { AssignmentFormDialog } from "@/components/assignment/AssignmentFormDialog";
 import { AssignmentSettingsCard } from "@/components/assignment/AssignmentSettingsCard";
+import { AssignmentTiming, LateBadge } from "@/components/assignment/AssignmentTiming";
+import { Button } from "@/components/ui/button";
 import { RubricPanel } from "@/components/rubric/RubricPanel";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAssignment } from "@/hooks/useAssignments";
 import { useAssignmentSubmissions } from "@/hooks/useSubmissions";
-import type { FeedbackStatus } from "@/types/submission";
-import { formatDueDate } from "@/lib/dates";
+import type { FeedbackStatus, Submission } from "@/types/submission";
+
+/** "18 / 20", "14.4 / 20 after −20%", or the old free-text grade. */
+function scoreLabel(submission: Submission): string {
+  if (submission.pointsEarned != null && submission.pointsPossible != null) {
+    const after = submission.pointsAfterPenalty ?? submission.pointsEarned;
+    return submission.latePenaltyPercent > 0
+      ? `${after} / ${submission.pointsPossible} (${submission.pointsEarned} before −${submission.latePenaltyPercent}%)`
+      : `${after} / ${submission.pointsPossible}`;
+  }
+  return submission.grade ?? "—";
+}
 
 const statusVariant: Record<FeedbackStatus, "default" | "secondary"> = {
   PENDING: "secondary",
@@ -51,10 +64,18 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
             { label: assignment.data.title },
           ]}
         />
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{assignment.data.title}</h1>
-        <p className="text-sm text-muted-foreground">
-          {assignment.data.courseName} · Due {formatDueDate(assignment.data.dueDate)}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{assignment.data.title}</h1>
+          <AssignmentFormDialog
+            courseId={assignment.data.courseId}
+            timeZone={assignment.data.timeZone}
+            assignment={assignment.data}
+            trigger={<Button variant="outline">Edit</Button>}
+          />
+        </div>
+        <div className="mt-1">
+          <AssignmentTiming assignment={assignment.data} audience="tutor" />
+        </div>
         {assignment.data.description ? (
           <p className="mt-2 text-sm text-muted-foreground">{assignment.data.description}</p>
         ) : null}
@@ -74,7 +95,7 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                 <TableHead>Version</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Grade</TableHead>
+                <TableHead>Score</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -92,14 +113,19 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
                   </TableCell>
                   <TableCell className="font-mono text-xs text-muted-foreground">v{submission.attemptNumber}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {new Date(submission.submittedAt).toLocaleString()}
+                    <span className="flex flex-wrap items-center gap-2">
+                      {new Date(submission.submittedAt).toLocaleString()}
+                      {submission.late ? (
+                        <LateBadge daysLate={submission.daysLate} latePenaltyPercent={submission.latePenaltyPercent} />
+                      ) : null}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Badge variant={statusVariant[submission.feedbackStatus]}>
                       {submission.releasedAt ? submission.feedbackStatus : "To review"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{submission.grade ?? "—"}</TableCell>
+                  <TableCell className="font-mono text-xs text-muted-foreground">{scoreLabel(submission)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

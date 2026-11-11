@@ -244,12 +244,23 @@ summary to pull one student's session history), and `findByStudentId` (the stude
 ## `assignment` — homework assignments attached to a course
 
 ### `Assignment` (entity)
-Fields: `id`, `course`, `title`, `description`, `dueDate`.
+Fields: `id`, `course`, `topic`, `gradeCategory`, `title`, `description`, `dueAt`, `opensAt`,
+`closesAt`, `pointsPossible`, `latePenaltyPercent`, `allowResubmission` (V26/V27, 2026-11-10).
+Times are `Instant`s; the API reads and writes them as wall-clock times in the course's
+`timeZone`. `isVisibleToStudents(now)` (false before `opensAt`) is the one rule every
+student-facing read, submit, Run and rubric path checks; `isAcceptingSubmissions(now)` adds
+`closesAt`. `closesAt == dueAt` means "locks at the due time". `Lateness` computes days late
+(part of a day counts as a day) and the penalty, capped at 100%.
 
 ### `AssignmentController`
 Tutor-only. Note the URL shape is deliberately asymmetric: creating/listing assignments is nested
 under `/api/courses/{courseId}/assignments`, but fetching a single assignment is
 `/api/assignments/{id}` (no course id needed, since the assignment id alone is already unique).
+`PUT /api/assignments/{id}` replaces title, description, times, points, late penalty and grade
+category (null means none); `PUT /api/assignments/{id}/settings` keeps unit and resubmission.
+Create accepts `dueAt` (`"2026-11-20T23:59"`, course time) or the older `dueDate` alone, which
+means 11:59 PM that day. Responses send times with the course zone's offset
+(`"2026-11-20T23:59:00-07:00"`), plus `dueDate`, `timeZone` and `acceptingSubmissions`.
 
 ### `AssignmentService`
 - **`createAssignment`** / **`listAssignments`** / **`getAssignment`** — tutor-scoped through the

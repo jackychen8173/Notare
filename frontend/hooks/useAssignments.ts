@@ -83,13 +83,43 @@ export function useMyAssignment(id: string) {
   });
 }
 
-export interface CreateAssignmentInput {
+/** Times are wall-clock times in the course's zone, "2026-11-20T23:59". */
+export interface AssignmentTimingInput {
+  dueAt: string;
+  opensAt: string | null;
+  /** Equal to dueAt locks it at the due time; null accepts late work any time. */
+  closesAt: string | null;
+  pointsPossible: number | null;
+  latePenaltyPercent: number;
+}
+
+export interface CreateAssignmentInput extends AssignmentTimingInput {
   title: string;
   description?: string;
-  dueDate: string;
   topicId?: string;
   gradeCategoryId?: string;
   allowResubmission?: boolean;
+}
+
+/** Replaces everything here: null means "none". */
+export interface UpdateAssignmentInput extends AssignmentTimingInput {
+  title: string;
+  description: string | null;
+  gradeCategoryId: string | null;
+}
+
+export function useUpdateAssignment(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateAssignmentInput) => {
+      const res = await api.put<ApiEnvelope<Assignment>>(`/api/assignments/${id}`, input);
+      return res.data.data;
+    },
+    onSuccess: (assignment) => {
+      queryClient.setQueryData(assignmentKeys.detail(id), assignment);
+      queryClient.invalidateQueries({ queryKey: assignmentKeys.forCourse(assignment.courseId) });
+    },
+  });
 }
 
 export function useCreateAssignment(courseId: string) {
