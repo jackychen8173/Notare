@@ -390,6 +390,26 @@ verbatim.
 
 ---
 
+## `gradebook` — the gradebook grid and a student's own grades
+
+### `GradebookController`
+`GET /api/courses/{id}/gradebook` (TUTOR, own course, else 404) returns `GradebookResponse`:
+categories, columns (assignments and published quizzes, oldest first: assignments by due time,
+quizzes by publish time) and one row per enrolled student with cells aligned to the columns, the
+student's category percents and course percent. `GET /api/student/courses/{id}/grades` (STUDENT,
+enrolled, else 404) returns `StudentGradesResponse`: the same columns and cells for that student
+only, without assignments that haven't opened and without class averages.
+
+### `GradebookService` / `GradeMath`
+Cells: an assignment cell's points come from the latest *released* version (after the late
+penalty, via `Lateness`), its status from the latest version (`SUBMITTED` while a resubmission
+waits, `RETURNED` once it's released), and `MISSING` when nothing was handed in and the due time
+has passed. A quiz cell's points are the sum of the attempt's awarded points, only once the attempt
+is released; the column's points possible is the sum of the quiz's question points. `GradeMath`
+holds the course-grade rules: only released scored work counts; without categories it's points
+over points; with categories it's the weight-averaged category percents over the categories that
+have graded work, and work outside every category doesn't count.
+
 ## `common` — cross-cutting concerns shared by every feature package
 
 ### `ApiResponse<T>`

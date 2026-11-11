@@ -9,6 +9,7 @@ import { CourseTabs, useCourseTab, type CourseTab } from "@/components/course/Co
 import { StudentMaterialsSection } from "@/components/course/MaterialsSection";
 import { UpcomingCard } from "@/components/course/UpcomingCard";
 import { MyUnitProgress } from "@/components/progress/UnitProgress";
+import { MyGrades } from "@/components/gradebook/MyGrades";
 import { DiscussionsSection } from "@/components/discussion/DiscussionsSection";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +22,7 @@ const TABS: CourseTab[] = [
   { id: "stream", label: "Stream" },
   { id: "classwork", label: "Classwork" },
   { id: "progress", label: "Progress" },
+  { id: "grades", label: "Grades" },
   { id: "discussions", label: "Discussions" },
 ];
 
@@ -87,6 +89,8 @@ function StudentCourseDetail({ id }: { id: string }) {
       ) : null}
 
       {tab === "progress" ? <MyUnitProgress courseId={id} /> : null}
+
+      {tab === "grades" ? <MyGrades courseId={id} /> : null}
 
       {tab === "discussions" ? (
         <DiscussionsSection scope="student" courseId={id} archived={course.data.archivedAt !== null} />
