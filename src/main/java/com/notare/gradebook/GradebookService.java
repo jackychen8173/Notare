@@ -195,11 +195,12 @@ public class GradebookService {
             BigDecimal total = quizTotals.get(quiz.getId());
             BigDecimal possible = total != null && total.signum() > 0 ? total : null;
             UUID categoryId = quiz.getGradeCategory() != null ? quiz.getGradeCategory().getId() : null;
-            Column column = new Column(quiz.getId(), ItemKind.QUIZ, quiz.getTitle(), null, null, possible, categoryId,
-                    GradeMath.countsTowardGrade(possible, categoryId, hasCategories), null);
-            list.add(new Item(column, null, quiz, quiz.getPublishedAt().atZone(ZoneId.systemDefault()).toInstant()));
+            Column column = new Column(quiz.getId(), ItemKind.QUIZ, quiz.getTitle(), inZone(quiz.getDueAt(), zone), null,
+                    possible, categoryId, GradeMath.countsTowardGrade(possible, categoryId, hasCategories), null);
+            Instant sortKey = quiz.getDueAt() != null ? quiz.getDueAt() : quiz.getPublishedAt().atZone(ZoneId.systemDefault()).toInstant();
+            list.add(new Item(column, null, quiz, sortKey));
         }
-        // Oldest first: assignments by due time, quizzes by when they were published.
+        // Oldest first, by due time (a quiz without one goes by when it was published).
         list.sort(Comparator.comparing(Item::sortKey));
         return new CourseItems(categories, list);
     }
@@ -251,9 +252,10 @@ public class GradebookService {
                 lateness.late(), lateness.daysLate(), lateness.penaltyPercent(), latest.getId());
     }
 
-    private static Cell quizCell(BigDecimal pointsPossible, QuizAttempt attempt, Map<UUID, BigDecimal> awarded) {
+    private static Cell quizCell(Quiz quiz, BigDecimal pointsPossible, QuizAttempt attempt, Map<UUID, BigDecimal> awarded, Instant now) {
         if (attempt == null) {
-            return new Cell(CellStatus.NOT_SUBMITTED, null, null, null, false, 0, 0, null);
+            boolean missing = quiz.getDueAt() != null && now.isAfter(quiz.getDueAt());
+            return new Cell(missing ? CellStatus.MISSING : CellStatus.NOT_SUBMITTED, null, null, null, false, 0, 0, null);
         }
         if (attempt.getReleasedAt() != null) {
             BigDecimal points = pointsPossible == null ? null : awarded.getOrDefault(attempt.getId(), BigDecimal.ZERO);
@@ -307,8 +309,8 @@ public class GradebookService {
                     .map(item -> item.assignment() != null
                             ? assignmentCell(item.assignment(), item.column().pointsPossible(),
                                     work.submissions().get(new Key(studentId, item.assignment().getId())), now)
-                            : quizCell(item.column().pointsPossible(),
-                                    work.attempts().get(new Key(studentId, item.quiz().getId())), work.quizPoints()))
+                            : quizCell(item.quiz(), item.column().pointsPossible(),
+                                    work.attempts().get(new Key(studentId, item.quiz().getId())), work.quizPoints(), now))
                     .toList();
         }
     }

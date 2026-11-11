@@ -16,6 +16,7 @@ import { CourseColorPicker } from "@/components/course/CourseColorPicker";
 import { CourseScheduleFields } from "@/components/course/CourseScheduleFields";
 import { CourseTabs, useCourseTab, type CourseTab } from "@/components/course/CourseTabs";
 import { Gradebook } from "@/components/gradebook/Gradebook";
+import { QuizDueFields, quizDueAt } from "@/components/quiz/QuizDueFields";
 import { GradeCategoriesManager } from "@/components/course/GradeCategoriesManager";
 import { MaterialsSection } from "@/components/course/MaterialsSection";
 import { TimeZoneField } from "@/components/course/TimeZoneField";
@@ -79,11 +80,13 @@ const createQuizSchema = z.object({
   timeLimitMinutes: z.string().optional(),
   topicId: z.string().optional(),
   gradeCategoryId: z.string().optional(),
+  dueDate: z.string().optional(),
+  dueTime: z.string().optional(),
 });
 
 type CreateQuizValues = z.infer<typeof createQuizSchema>;
 
-function NewQuizDialog({ courseId }: { courseId: string }) {
+function NewQuizDialog({ courseId, timeZone }: { courseId: string; timeZone: string }) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const createQuiz = useCreateQuiz(courseId);
@@ -105,6 +108,7 @@ function NewQuizDialog({ courseId }: { courseId: string }) {
         timeLimitMinutes: values.timeLimitMinutes ? Number(values.timeLimitMinutes) : undefined,
         topicId: values.topicId === NO_TOPIC ? undefined : values.topicId,
         gradeCategoryId: values.gradeCategoryId === NO_TOPIC ? undefined : values.gradeCategoryId,
+        dueAt: quizDueAt(values.dueDate, values.dueTime),
       },
       {
         // Question-building happens on the quiz's own detail page, not in this dialog -
@@ -150,6 +154,12 @@ function NewQuizDialog({ courseId }: { courseId: string }) {
               Leave blank for an untimed quiz. A timed quiz auto-submits when time runs out.
             </p>
           </div>
+          <QuizDueFields
+            idPrefix="quiz"
+            timeZone={timeZone}
+            dateProps={register("dueDate")}
+            timeProps={register("dueTime")}
+          />
           {topics.data && topics.data.length > 0 ? (
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="quiz-topicId">Unit (optional)</Label>
@@ -587,7 +597,7 @@ function CourseDetail({ id }: { id: string }) {
                     timeZone={course.data.timeZone}
                     trigger={<Button variant="outline">New assignment</Button>}
                   />
-                  <NewQuizDialog courseId={id} />
+                  <NewQuizDialog courseId={id} timeZone={course.data.timeZone} />
                 </div>
               ) : null}
             </div>

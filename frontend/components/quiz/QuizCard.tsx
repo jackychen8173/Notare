@@ -2,6 +2,7 @@ import Link from "next/link";
 import { IconListCheck } from "@tabler/icons-react";
 
 import { Badge } from "@/components/ui/badge";
+import { formatDueAt } from "@/lib/dates";
 import type { Quiz } from "@/types/quiz";
 
 interface QuizCardProps {
@@ -26,6 +27,7 @@ export function QuizCard({ quiz, href, showStatus = true }: QuizCardProps) {
         <p className="text-xs text-muted-foreground">
           {quiz.questions.length} question{quiz.questions.length === 1 ? "" : "s"}
           {quiz.timeLimitMinutes ? ` · ${quiz.timeLimitMinutes} min` : ""}
+          {quiz.dueAt ? ` · due ${formatDueAt(quiz.dueAt, quiz.timeZone)}` : ""}
         </p>
       </div>
       {showStatus ? (

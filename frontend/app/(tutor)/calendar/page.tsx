@@ -2,11 +2,13 @@
 
 import dynamic from "next/dynamic";
 
+import { CalendarSubscribeDialog } from "@/components/calendar/CalendarSubscribeDialog";
 import type { CalendarLinks } from "@/components/calendar/CalendarView";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAssignmentsForCourses } from "@/hooks/useAssignments";
 import { useCourses } from "@/hooks/useCourses";
+import { useQuizzesForCourses } from "@/hooks/useQuizzes";
 import { useSessions } from "@/hooks/useSessions";
 import type { Session } from "@/types/session";
 
@@ -19,6 +21,7 @@ const CalendarView = dynamic(() => import("@/components/calendar/CalendarView").
 const links: CalendarLinks = {
   course: (id) => `/courses/${id}`,
   assignment: (id) => `/assignments/${id}`,
+  quiz: (id) => `/quizzes/${id}`,
   session: (id) => `/sessions/${id}`,
 };
 
@@ -28,6 +31,7 @@ export default function TutorCalendarPage() {
   const courses = useCourses();
   const courseList = courses.data ?? [];
   const assignments = useAssignmentsForCourses(courseList.map((course) => course.id));
+  const quizzes = useQuizzesForCourses(courseList.map((course) => course.id));
   const sessions = useSessions();
   const hasSchedules = courseList.some((course) => (course.schedule?.days.length ?? 0) > 0);
 
@@ -40,13 +44,15 @@ export default function TutorCalendarPage() {
             ? "Due dates and sessions across your courses. Add class meeting times from a course's Edit details."
             : "Class meetings, due dates and sessions across your courses."
         }
+        actions={<CalendarSubscribeDialog />}
       />
-      {courses.isLoading || assignments.isLoading || sessions.isLoading ? (
+      {courses.isLoading || assignments.isLoading || quizzes.isLoading || sessions.isLoading ? (
         <Skeleton className="h-[36rem] w-full rounded-card" />
       ) : (
         <CalendarView
           courses={courseList}
           assignments={assignments.data}
+          quizzes={quizzes.data.filter((quiz) => quiz.publishedAt)}
           sessions={sessions.data ?? []}
           links={links}
           sessionTitle={sessionTitle}

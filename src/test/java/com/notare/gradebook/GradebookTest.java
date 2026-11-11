@@ -254,4 +254,26 @@ class GradebookTest extends IntegrationTest {
         getJson("/api/courses/" + courseId + "/gradebook", otherTutor.token(), 404);
         getJson("/api/courses/" + courseId + "/gradebook", ada.token(), 403);
     }
+
+    @Test
+    void aQuizPastItsDueTimeWithNoAttemptIsMissing() throws Exception {
+        Account tutor = register("TUTOR");
+        Account student = register("STUDENT");
+        JsonNode course = createCourse(tutor);
+        String courseId = course.get("id").asText();
+        join(student, course);
+
+        for (String[] quiz : new String[][] {{"Past quiz", hoursFromNow(-3)}, {"Future quiz", hoursFromNow(30)}}) {
+            String id = data(post("/api/courses/" + courseId + "/quizzes"), tutor.token(),
+                    Map.of("title", quiz[0], "dueAt", quiz[1]), 201).get("id").asText();
+            call(post("/api/quizzes/" + id + "/questions"), tutor.token(),
+                    Map.of("type", "TRUE_FALSE", "prompt", "?", "pointsPossible", 1, "correctBoolean", true), 201);
+            call(patch("/api/quizzes/" + id + "/publish"), tutor.token(), null, 200);
+        }
+
+        JsonNode book = gradebook(tutor, courseId);
+        assertThat(row(book, student).get("cells").get(column(book, "Past quiz")).get("status").asText()).isEqualTo("MISSING");
+        assertThat(row(book, student).get("cells").get(column(book, "Future quiz")).get("status").asText()).isEqualTo("NOT_SUBMITTED");
+        assertThat(book.get("columns").get(column(book, "Past quiz")).get("dueAt").isNull()).isFalse();
+    }
 }

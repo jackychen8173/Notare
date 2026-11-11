@@ -49,6 +49,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
+                        // Calendar feeds: the secret token in the URL is the credential (calendar apps can't log in).
+                        .requestMatchers(HttpMethod.GET, "/api/calendar-feeds/*").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )

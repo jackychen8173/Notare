@@ -60,6 +60,11 @@ public class User {
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
 
+    // The secret part of this person's calendar feed URL (com.notare.calendar); null until they
+    // ask for a link. Resetting it replaces it, so an old link stops working.
+    @Column(name = "calendar_token", unique = true, length = 64)
+    private String calendarToken;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

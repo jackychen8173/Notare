@@ -10,7 +10,7 @@ export interface GradebookColumn {
   id: string;
   kind: "ASSIGNMENT" | "QUIZ";
   title: string;
-  /** With the course zone's offset; null for quizzes. */
+  /** With the course zone's offset; null when there's no due time (quizzes can have none). */
   dueAt: string | null;
   opensAt: string | null;
   /** null when the work has no points: it shows a status only and never counts. */

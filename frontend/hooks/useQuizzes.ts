@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, type ApiEnvelope } from "@/lib/api";
 import type { Quiz, QuestionType } from "@/types/quiz";
@@ -56,6 +56,20 @@ export function useMyCourseQuizzes(courseId: string) {
   });
 }
 
+/** Quizzes across several courses (the calendar). `mine` reads the student's published ones. */
+export function useQuizzesForCourses(courseIds: string[], mine = false) {
+  return useQueries({
+    queries: courseIds.map((courseId) => ({
+      queryKey: mine ? quizKeys.forMyCourse(courseId) : quizKeys.forCourse(courseId),
+      queryFn: () => (mine ? fetchMyCourseQuizzes(courseId) : fetchCourseQuizzes(courseId)),
+    })),
+    combine: (results) => ({
+      data: results.flatMap((result) => result.data ?? []),
+      isLoading: results.some((result) => result.isLoading),
+    }),
+  });
+}
+
 export function useMyQuiz(id: string) {
   return useQuery({
     queryKey: quizKeys.mineDetail(id),
@@ -70,6 +84,8 @@ export interface QuizFormInput {
   timeLimitMinutes?: number;
   topicId?: string;
   gradeCategoryId?: string;
+  /** Wall clock in the course's zone, "2026-11-20T23:59"; null or omitted means none. */
+  dueAt?: string | null;
 }
 
 export function useCreateQuiz(courseId: string) {

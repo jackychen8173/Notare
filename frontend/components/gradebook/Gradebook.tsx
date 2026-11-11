@@ -229,7 +229,9 @@ export function Gradebook({ courseId, courseName }: { courseId: string; courseNa
                       {column.title}
                     </Link>
                     <span className="block font-mono text-[11px] font-normal text-muted-foreground">
-                      {column.kind === "QUIZ" ? "quiz" : column.dueAt ? `due ${formatDueDate(column.dueAt.slice(0, 10))}` : ""}
+                      {[column.kind === "QUIZ" ? "quiz" : null, column.dueAt ? `due ${formatDueDate(column.dueAt.slice(0, 10))}` : null]
+                        .filter(Boolean)
+                        .join(" · ")}
                       {column.pointsPossible != null ? ` · ${formatPoints(column.pointsPossible)} pts` : ""}
                     </span>
                     {column.categoryId ? (
