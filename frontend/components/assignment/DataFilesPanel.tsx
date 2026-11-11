@@ -17,6 +17,11 @@ const MAX_CHARS = 200_000;
 
 type Draft = { id: string | null; name: string; content: string };
 
+/** Lines as a person counts them: a final newline doesn't start another line. */
+function lineCount(text: string) {
+  return text === "" ? 0 : text.replace(/\r?\n$/, "").split("\n").length;
+}
+
 /**
  * Text files the students' programs can read when they press Run (a CSV of scores, a word
  * list). Students see them on the assignment once it opens.
@@ -83,7 +88,7 @@ export function DataFilesPanel({ assignmentId }: { assignmentId: string }) {
                 <IconFileText className="size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">{file.name}</span>
                 <span className="font-mono text-xs text-muted-foreground">
-                  {file.content.split("\n").length} lines
+                  {lineCount(file.content)} {lineCount(file.content) === 1 ? "line" : "lines"}
                 </span>
                 <>
                     <Button size="sm" variant="ghost" aria-label={`Edit ${file.name}`} onClick={() => startEdit(file)}>

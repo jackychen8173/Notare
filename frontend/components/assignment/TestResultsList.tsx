@@ -9,7 +9,7 @@ function Block({ label, text }: { label: string; text: string | null }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{label}</p>
-      <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2 font-mono text-xs text-foreground">
+      <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md border border-border bg-muted/40 p-2 font-mono text-xs text-foreground">
         {text ? text : <span className="text-muted-foreground">(nothing)</span>}
       </pre>
     </div>
@@ -24,7 +24,9 @@ export function TestResultsList({ run }: { run: TestRunResult }) {
   const passed = run.results.filter((result) => result.passed).length;
 
   return (
-    <div className="flex flex-col gap-2">
+    // A container, so input/expected/got sit side by side only where there's room (not in the
+    // review page's narrow sidebar), whatever the screen width.
+    <div className="@container flex flex-col gap-2">
       <p className="text-sm font-medium text-foreground">
         {passed} of {run.results.length} {run.results.length === 1 ? "test passes" : "tests pass"}
         <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
@@ -59,7 +61,7 @@ export function TestResultsList({ run }: { run: TestRunResult }) {
               <p className="text-xs text-destructive">Didn&apos;t finish in time.</p>
             ) : null}
             {!result.passed && !run.compileError && result.expectedOutput !== null ? (
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-2 @xl:grid-cols-3">
                 <Block label="Input" text={result.stdin} />
                 <Block label="Expected" text={result.expectedOutput} />
                 <Block label="Got" text={result.actualOutput} />
