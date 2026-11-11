@@ -429,6 +429,25 @@ course's zone, or `America/Vancouver` without a course). Due times and sessions 
 days are left out. `ICalendar` writes RFC 5545 text: UTC times, escaped TEXT values, lines folded
 at 75 octets without splitting a UTF-8 character. Event links use `email.app-base-url`.
 
+## `notification` — in-app notifications
+
+### `NotificationController`
+TUTOR or STUDENT. `GET /api/notifications` returns `NotificationsResponse`: up to 50 items from the
+last 14 days, newest first, each with a stable `id`, `kind`, `title`, optional `detail`, course,
+frontend `href`, `at` and `unread`; plus `unreadCount`, `availableKinds` (the role's kinds) and
+`mutedKinds`. `POST /api/notifications/seen` sets `users.notifications_seen_at` to now.
+`PUT /api/notifications/settings` takes `{mutedKinds}`; a kind the role doesn't get is a 400.
+
+### `NotificationService` / `NotificationKind`
+Nothing is stored; each read works the list out from existing rows. Students (non-archived
+courses they're in): `NEW_WORK` (an assignment's later of `createdAt`/`opensAt`, only once it's
+visible; a quiz's `publishedAt`), `FEEDBACK` (`releasedAt` on their submissions and quiz attempts),
+`ANNOUNCEMENT`, `DUE_SOON` (due in the next 24 hours, still open, nothing handed in; its `at` is
+the due time minus 24 hours) and `DISCUSSION` (replies by others in threads they started, one item
+per thread, no names). Tutors (non-archived courses they own): `SUBMISSION` (assignments handed
+in, quizzes finished), `JOINED` and `DISCUSSION` (new student threads and posts). An item is unread
+when its `at` is after `notifications_seen_at`.
+
 ## `common` — cross-cutting concerns shared by every feature package
 
 ### `ApiResponse<T>`

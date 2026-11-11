@@ -11,6 +11,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -74,6 +75,17 @@ public class Assignment {
     @Column(name = "allow_resubmission", nullable = false)
     @Builder.Default
     private boolean allowResubmission = false;
+
+    /** When it was posted; null for assignments posted before V29 (unknown). */
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = Instant.now();
+        }
+    }
 
     /** The one rule for whether students can see this assignment yet. */
     public boolean isVisibleToStudents(Instant now) {

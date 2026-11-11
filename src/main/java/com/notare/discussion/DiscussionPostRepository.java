@@ -18,4 +18,20 @@ public interface DiscussionPostRepository extends JpaRepository<DiscussionPost, 
 
     @Query("SELECT p.thread.id, COUNT(p) FROM DiscussionPost p WHERE p.thread.id IN :threadIds GROUP BY p.thread.id")
     List<Object[]> countByThreadIds(@Param("threadIds") Collection<UUID> threadIds);
+
+    /** Replies by other people in threads this person started, in active courses (notifications). */
+    @Query("""
+            SELECT p FROM DiscussionPost p
+            WHERE p.thread.author.id = :userId AND p.author.id <> :userId
+              AND p.thread.course.archivedAt IS NULL AND p.createdAt > :since
+            """)
+    List<DiscussionPost> findRepliesToThreadsStartedBy(@Param("userId") UUID userId, @Param("since") java.time.LocalDateTime since);
+
+    /** Replies by anyone but the tutor in the tutor's active courses (notifications). */
+    @Query("""
+            SELECT p FROM DiscussionPost p
+            WHERE p.thread.course.tutor.id = :tutorId AND p.author.id <> :tutorId
+              AND p.thread.course.archivedAt IS NULL AND p.createdAt > :since
+            """)
+    List<DiscussionPost> findStudentPostsForTutor(@Param("tutorId") UUID tutorId, @Param("since") java.time.LocalDateTime since);
 }
